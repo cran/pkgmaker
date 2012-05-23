@@ -20,7 +20,8 @@
   \item{libname}{name of the output compiled library}
 }
 \description{
-  \code{R.exec} executes R commands.
+  \code{R.exec} executes a single R command via
+  \code{\link{system2}}.
 
   \code{R.CMD} executes R CMD commands.
 

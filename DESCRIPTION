@@ -1,7 +1,7 @@
 Package: pkgmaker
 Type: Package
 Title: Package development utilities
-Version: 0.8
+Version: 0.8.5
 Date: 2012-05-23
 Author: Renaud Gaujoux
 Maintainer: Renaud Gaujoux <renaud@cbio.uct.ac.za>
@@ -19,12 +19,10 @@ URL: http://pkgmaker.r-forge.r-project.org, http://cran.r-project.org
 LazyLoad: yes
 Depends: R (>= 2.15), methods, stats, digest, stringr, codetools
 Imports: methods, xtable
-Suggests: registry, devtools, bibtex, RUnit, testthat, knitr
+Suggests: registry, devtools (>= 0.7.1), bibtex, RUnit, testthat, knitr
 Collate: 'utils.R' 'logging.R' 'unitTests.R' 'data.R' 'namespace.R'
         'devutils.R' 'package.R' 'options.R' 'registry.R' 'bibtex.R'
         'is.R' 'vignette.R' 'files.R' 'packages.R'
+Packaged: 2012-10-12 12:31:03 UTC; renaud
 Repository: CRAN
-Repository/R-Forge/Project: pkgmaker
-Repository/R-Forge/Revision: 51
-Packaged: 2012-07-23 18:20:24 UTC; rforge
-Date/Publication: 2012-07-24 06:45:40
+Date/Publication: 2012-10-12 14:30:17

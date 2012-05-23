@@ -474,3 +474,39 @@ exitCheck <- function(){
 		}
 	}
 }
+
+#' Ordering Version Numbers
+#' 
+#' Orders a vector of version numbers, in natural order.
+#' 
+#' @param x a character vector of version numbers
+#' @param decreasing a logical that indicates if the ordering should be decreasing
+#' 
+#' @export
+#' @examples
+#' 
+#' v <- c('1.0', '1.03', '1.2')
+#' order(v)
+#' orderVersion(v)
+#' 
+orderVersion <- function(x, decreasing=FALSE){
+	tx <- gsub("[^0-9]+",".", paste('_', x, sep=''))
+	stx <- strsplit(tx, ".", fixed=TRUE)
+	mtx <- max(sapply(stx, length))
+	tx <- sapply(stx, 
+			function(v) paste(sprintf("%06i", c(as.integer(v[-1]),rep(0, mtx-length(v)+1))), collapse='.')
+	)	
+	order(tx, decreasing=decreasing)
+}
+
+#' @param ... extra parameters passed to \code{orderVersion}
+#' 
+#' @export
+#' @rdname orderVersion
+#' @examples
+#' 
+#' sort(v)
+#' sortVersion(v)
+sortVersion <- function(x, ...){
+	x[orderVersion(x, ...)]
+}

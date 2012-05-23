@@ -99,7 +99,7 @@ define do_install
 		echo "# Installing the package in tempdir '$(TMP_INSTALL_DIR)'"; \
   	$(eval R_LIBS := $(TMP_INSTALL_DIR):$(R_LIBS)) \
   	echo "# Using R_LIBS: $(R_LIBS)"; \
-  	$(RSCRIPT) --vanilla --quiet -e "devtools::install('../', reload=FALSE, quick=TRUE)" >> Rinstall.log 2>> Rinstall.err; \
+  	$(RSCRIPT) --vanilla --quiet -e "pkgmaker::quickinstall('..', lib='$(TMP_INSTALL_DIR)')" > Rinstall.log 2> Rinstall.err; \
   	if [ ! -d "$(TMP_INSTALL_DIR)/$(MAKE_R_PACKAGE)" ]; then \
   		echo "ERROR: Temporary installation failed: see files Rinstall.log and Rinstall.err"; \
   		echo "# Removing temporary library directory $(TMP_INSTALL_DIR)"; \

@@ -205,6 +205,55 @@ is.rnw <- function(x){
 	is(x, 'rnw')
 }
 
+
+runVignette <- function(x, ...){
+	UseMethod('runVignette')
+}
+
+runVignette.default <- function(x, file=NULL, ...){
+	stop("Vignette compiler '", class(x), "' is not supported")
+} 
+
+## #' @param fig.path specification for the figure path (used in knitr vignettes only). 
+## #' If \code{TRUE} then the figure path is set to \code{'./figure/<basename>/'}.
+## #' @param cache.path specification for the cache path.
+## #' If \code{TRUE} then the figure path is set to \code{'./cache/<basename>/'}.
+runVignette.rnw_knitr <- function(x, file=NULL, ..., fig.path=TRUE, cache.path=TRUE){
+	library(knitr)
+	# expand path to cache to fix issue in knitr
+	bname <- sub("\\..{3}$", '', basename(x$file))
+	
+	# cache.path
+	if( !isFALSE(cache.path) ){
+		if( isTRUE(cache.path) ){
+			cache.path <- file.path(getwd(), 'cache', bname, '/')
+		}
+		opts_chunk$set(cache.path=cache.path)	
+	}
+	# fig.path
+	if( !isFALSE(fig.path) ){
+		if( isTRUE(fig.path) ){
+			fig.path <- file.path(getwd(), 'figure', str_c(bname,'-'))
+		}
+		opts_chunk$set(fig.path=fig.path)	
+	}
+	
+	# set other options
+	opts_chunk$set(...)
+	
+	# run knitr
+	knit(x$file, file)
+}
+
+runVignette.rnw_sweave <- function(x, file=NULL, ...){
+	res <- Sweave(x$file, driver=x$driver, ...)
+	# move output file
+	if( !is.null(file) ){
+		file.rename(res, file)
+	}
+	res
+}
+
 #' Utilities for Vignettes
 #' 
 #' \code{rnw} provides a unified interface to run vignettes that detects
@@ -216,54 +265,32 @@ is.rnw <- function(x){
 #' @param file output file
 #' @param ... extra arguments passed to \code{as.rnw} that can be used to force 
 #' certain building parameters.
-#' @param fig.path specification for the figure path (used in knitr vignettes only). 
-#' If \code{TRUE} then the figure path is set to \code{'./figure/<basename>/'}.
-#' @param cache.path specification for the cache path.
-#' If \code{TRUE} then the figure path is set to \code{'./cache/<basename>/'}.
 #' @param raw a logical that indicates if the raw result for the compilation 
 #' should be returned, instead of the result file path.
 #'   
 #' @rdname vignette
 #' @export
-rnw <- function(x, file=NULL, ..., fig.path=TRUE, cache.path=TRUE, raw=FALSE){
+rnw <- function(x, file=NULL, ..., raw=FALSE){
+	# load rnw file
 	x <- as.rnw(x, ...)	
-	driver <- x$driver
 	
-	comp <- x$compiler
-	if( comp == 'knitr' ){ # compile with knitr
-		library(knitr)
-		# expand path to cache to fix issue in knitr
-		bname <- sub("\\..{3}$", '', basename(x$file))
-		
-		# cache.path
-		if( !isFALSE(cache.path) ){
-			if( isTRUE(cache.path) ){
-				cache.path <- file.path(getwd(), 'cache', bname, '/')
-			}
-			opts_chunk$set(cache.path=cache.path)	
-		}
-		# fig.path
-		if( !isFALSE(fig.path) ){
-			if( isTRUE(fig.path) ){
-				fig.path <- file.path(getwd(), 'figure', str_c(bname,'-'))
-			}
-			opts_chunk$set(fig.path=fig.path)	
-		}
-		
-		# set other options
-		opts_chunk$set(...)
-		
-		# run knitr
-		res <- knit(x$file, file)
-		
-	}else{ # compile with Sweave
-		res <- Sweave(x$file, driver=x$driver, ...)
-		# move output file
-		if( !is.null(file) ){
-			file.rename(res, file)
-		}
+	# setup restoration of options and graphical parameters
+	opts <- options()
+	gpar <- par(no.readonly=TRUE)
+	on.exit( {options(opts); par(gpar)})
+	
+	# copy package cleveref from pkgmaker installation
+	if( 'cleveref' %in% x$latexPackages ){
+		clv <- packagePath('cleveref.sty', package='pkgmaker')
+		message("# Copying package 'cleveref.sty' from ", dirname(clv)," ... ", appendLF=FALSE)
+		wd <- if( !is.null(file) ) dirname(file) else getwd()
+		file.copy(clv, wd)
+		if( file.exists(file.path(wd, basename(clv))) )	message('OK') else message('ERROR')
 	}
-
+	
+	# run vignette
+	res <- runVignette(x, file=file, ...)
+	
 	# Package citations
 	if( !is.null(keys <- x$cite) ){
 		message("# Writing package bibtex file [", length(keys)," key(s)] ... ", appendLF=FALSE)
@@ -271,8 +298,6 @@ rnw <- function(x, file=NULL, ..., fig.path=TRUE, cache.path=TRUE, raw=FALSE){
 		message('OK')
 	}
 	#
-
-	#x$compiler(x, file, ...)
 
 	# return raw result if required
 	if( raw ) return(res)
@@ -319,12 +344,17 @@ as.rnw <- function(x, ..., load = TRUE){
 	
 	# detect compiler
 	obj$compiler <- rnwCompiler(obj) %||% 'Sweave'
+	cl <- if( obj$compiler == 'knitr' ) 'knitr' else 'sweave'
+	class(obj) <- c(paste('rnw_', cl, sep=''), class(obj))
+	
 	# detect driver
 	obj$driver <- rnwDriver(obj) %||% RweaveLatex()
 	# detect wrapper
 	obj$wrapper <- rnwWrapper(obj)
 	# detect fixed included images
 	obj$includes <- rnwIncludes(obj)
+	# detect latex packages
+	obj$latexPackages <- rnwLatexPackages(obj)
 	# detect children vignettes
 	obj$children <- rnwChildren(obj)
 	# detect package citations
@@ -342,7 +372,7 @@ as.rnw <- function(x, ..., load = TRUE){
 
 rnwObject <- function(...) as.rnw(..., load=FALSE)
 
-rnwParser <- function(tag, name=tolower(tag), trim=TRUE){
+rnwParser <- function(tag, name=tolower(tag), trim=TRUE, commented=FALSE, options=FALSE, first=FALSE){
 	
 	function(x, verbose=TRUE){
 		x <- rnwObject(x)
@@ -350,17 +380,29 @@ rnwParser <- function(tag, name=tolower(tag), trim=TRUE){
 		l <- readLines(x$file)
 		
 		# identify driver
-		dr <- str_match(l, str_c("^\\s*%\\s*\\\\Vignette", tag, "\\{([^}]*)\\}"))
+		dr <- str_match(l, str_c("^\\s*"
+								, if( commented ) '%'
+								,"\\s*\\\\", tag
+								, if( options ) "(\\[[^]]*\\])?"
+								, "\\{([^}]*)\\}"))
 		w <- which(!is.na(dr[,1L]))
 		if( length(w) > 0L ){
-			s <- dr[w[1L],2L]
+			if( first ) w <- w[1L]
+			s <- dr[w, if( options ) 3L else 2L]
 			# trim if necessary
 			if( trim ) s <- str_trim(s)
-			if( verbose ) rnw_message("Detected ", name, ": '", s, "'")
+			if( verbose ) rnw_message("Detected ", name, ": "
+								,paste("'", s, "'", sep='', collapse=', '))
 			s
 		}
 	}
 }
+
+rnwVignetteParser <- function(tag, ...){
+	rnwParser(str_c('Vignette',tag), name=tolower(tag), ..., commented=TRUE, first=TRUE)
+}
+
+rnwLatexPackages <- rnwParser('usepackage', name='LaTeX package(s)', options=TRUE)
 
 #' \code{rnwCompiler} tries to detect the vignette compiler to use on a vignette
 #' source file, e.g., \code{\link{Sweave}} or \code{\link[knitr]{knitr}}.
@@ -369,14 +411,14 @@ rnwParser <- function(tag, name=tolower(tag), trim=TRUE){
 #' 
 #' @rdname vignette
 #' @export
-rnwCompiler <- rnwParser('Compiler')
+rnwCompiler <- rnwVignetteParser('Compiler')
 
 #' \code{rnwWrapper} tries to detect the type of vignette and if it is meant 
 #' to be wrapped into another main file.
 #' 
 #' @rdname vignette
 #' @export
-rnwWrapper <- rnwParser('Wrapper')
+rnwWrapper <- rnwVignetteParser('Wrapper')
 
 #' \code{rnwDriver} tries to detect Sweave driver to use on a vignette source 
 #' file, e.g., \code{SweaveCache}, \code{highlight}, etc..
@@ -385,7 +427,7 @@ rnwWrapper <- rnwParser('Wrapper')
 #' @export
 rnwDriver <- function(x){
 	
-	parse_driver <- rnwParser('Driver', trim=FALSE)
+	parse_driver <- rnwVignetteParser('Driver', trim=FALSE)
 	if( !is.null(s <- parse_driver(x)) ){
 		# eval text
 		eval(parse(text=s))

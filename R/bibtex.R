@@ -44,15 +44,15 @@
 #' @examples
 #' 
 #' #library(bibtex)
-#' write.bib(c('bibtex', 'utils', 'tools'), file='references')
+#' pkgmaker::write.bib(c('bibtex', 'utils', 'tools'), file='references')
 #' bibs <- bibtex::read.bib('references.bib')
-#' write.bib(bibs, 'references2.bib')
+#' pkgmaker::write.bib(bibs, 'references2.bib')
 #' md5 <- tools::md5sum(c('references.bib', 'references2.bib'))
 #' md5[1] == md5[2]
 #' \dontshow{ stopifnot(md5[1] == md5[2]) }
 #' 
 #' # write to stdout()
-#' write.bib(c('bibtex', 'utils', 'tools'), file=NULL)
+#' pkgmaker::write.bib(c('bibtex', 'utils', 'tools'), file=NULL)
 #' 
 #' \dontshow{ unlink(c('references.bib', 'references2.bib'))}
 #' 
@@ -152,8 +152,11 @@ write.bib <- function(entry=NULL, file="Rpackages.bib", append = FALSE, verbose 
 #' directory (i.e. inst/ in development mode).
 #'  
 #' @param key character vector of BibTex keys
-#' @return a character string containing the text formated BibTex entries 
-#' @keywords internal
+#' @param short logical that indicates if the reference should be shorten as 
+#' First Author et al. if it has more than one author.
+#' @return a character string containing the text formated BibTex entries
+#'  
+#' @export
 packageReference <- function(key, short=FALSE){
 	bibs <- bibtex::read.bib(file=packageReferenceFile())
 	k <- sapply(bibs, function(x) x$key)

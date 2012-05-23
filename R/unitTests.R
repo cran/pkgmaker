@@ -811,3 +811,41 @@ utestPath <- function(...){
 	packagePath('tests-results', ...)
 }
 
+#uTest <- function(file, fun, ...){
+#	
+#	library(RUnit)
+#	tdir <- packagePath('unitTests')
+#	ufiles <- list.files(tdir)
+#	
+#	get.tfile <- function(file){
+#		i <- grep(paste(file,"(\\.[rR])?",sep=''), ufiles)
+#		if( length(i) > 0L ) ufiles[i[1L]]
+#		else NULL
+#	}
+#	
+#	tfile <- file
+#	if( is.null(tfile <- get.tfile(tfile)) ){
+#		tfile <- paste('runit.', file, sep='')
+#		if( is.null(tfile <- get.tfile(tfile)) ){
+#			tfile <- paste('testthat.', file, sep='')
+#			if( is.null(tfile <- get.tfile(tfile)) )
+#				stop("Could not find test file '", file, "' (nor runit.% or testthat.% versions) in '", tdir, "'")
+#		}
+#	}
+#	tfile <- file.path(tdir, tfile)
+#	
+#	if( !missing(fun) ){
+#		e <- new.env()
+#		source(tfile, local=e)
+#		tfun <- fun
+#		if( !exists(tfun, e, inherits=FALSE) ){
+#			tfun <- paste('test.', fun, sep='')
+#			if( !exists(tfun, e, , inherits=FALSE) )
+#				stop("Could not find test function '", fun, "' (not test.% version) in '", tfile, "'")
+#		}
+#		tfun <- gsub(".", "\\.", tfun, fixed=TRUE)
+#		runTestFile(tfile, testFuncRegexp=str_c("^", tfun, "$"), ...)
+#	}else 
+#		runTestFile(tfile, ...)
+#}
+

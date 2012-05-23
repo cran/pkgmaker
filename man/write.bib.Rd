@@ -42,15 +42,15 @@
 }
 \examples{
 #library(bibtex)
-write.bib(c('bibtex', 'utils', 'tools'), file='references')
+pkgmaker::write.bib(c('bibtex', 'utils', 'tools'), file='references')
 bibs <- bibtex::read.bib('references.bib')
-write.bib(bibs, 'references2.bib')
+pkgmaker::write.bib(bibs, 'references2.bib')
 md5 <- tools::md5sum(c('references.bib', 'references2.bib'))
 md5[1] == md5[2]
 \dontshow{ stopifnot(md5[1] == md5[2]) }
 
 # write to stdout()
-write.bib(c('bibtex', 'utils', 'tools'), file=NULL)
+pkgmaker::write.bib(c('bibtex', 'utils', 'tools'), file=NULL)
 
 \dontshow{ unlink(c('references.bib', 'references2.bib'))}
 }

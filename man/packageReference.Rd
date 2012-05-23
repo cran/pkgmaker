@@ -6,6 +6,10 @@
 }
 \arguments{
   \item{key}{character vector of BibTex keys}
+
+  \item{short}{logical that indicates if the reference
+  should be shorten as First Author et al. if it has more
+  than one author.}
 }
 \value{
   a character string containing the text formated BibTex
@@ -17,5 +21,4 @@
   looked in a file named REFERNCES.bib in the package's
   root directory (i.e. inst/ in development mode).
 }
-\keyword{internal}
 

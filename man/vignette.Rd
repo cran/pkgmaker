@@ -9,8 +9,7 @@
 \alias{vignetteMakefile}
 \title{Utilities for Vignettes}
 \usage{
-  rnw(x, file = NULL, ..., fig.path = TRUE,
-    cache.path = TRUE, raw = FALSE)
+  rnw(x, file = NULL, ..., raw = FALSE)
 
   as.rnw(x, ..., load = TRUE)
 
@@ -36,14 +35,6 @@
 
   \item{...}{extra arguments passed to \code{as.rnw} that
   can be used to force certain building parameters.}
-
-  \item{fig.path}{specification for the figure path (used
-  in knitr vignettes only). If \code{TRUE} then the figure
-  path is set to \code{'./figure/<basename>/'}.}
-
-  \item{cache.path}{specification for the cache path. If
-  \code{TRUE} then the figure path is set to
-  \code{'./cache/<basename>/'}.}
 
   \item{raw}{a logical that indicates if the raw result for
   the compilation should be returned, instead of the result

@@ -11,15 +11,15 @@ NULL
 
 #' Executing R Commands
 #' 
-#' \code{R.exec} executes R commands.
+#' \code{R.exec} executes a single R command via \code{\link{system2}}.
 #' 
 #' @param ... extra arguments that are concatenated and appended to 
 #' the command. 
 #' 
 #' @export
 R.exec <- function(...){
-	cmd <- paste(file.path(R.home(), 'bin', 'R'),' ', ..., sep='')
-	print(cmd)
+	cmd <- paste(file.path(R.home(), 'bin', 'R'), ' ', ..., sep='', collapse='')
+	message(cmd)
 	system(cmd)
 }
 
@@ -41,6 +41,35 @@ R.CMD <- function(cmd, ...){
 #' @rdname R.exec
 R.SHLIB <- function(libname, ...){
 	R.CMD('SHLIB', '-o ', libname, .Platform$dynlib.ext, ...)
+}
+
+#' Quick Installation of a Source Package
+#' 
+#' Builds and install a minimal version of a package from its 
+#' source directory.
+#' 
+#' @param path path to the package source directory
+#' @param lib installation directory. Defaults to the user's R 
+#' default installation directory. 
+#' 
+#' @export
+#' 
+quickinstall <- function(path, lib=NULL){
+	
+	npath <- normalizePath(path)
+	nlib <- if( !is.null(lib) ) normalizePath(lib)
+	pkg <- as.package(path)
+	
+	owd <- setwd(tempdir())
+	on.exit( setwd(owd) )
+	# build
+	message("# Building package `", pkg$package, "` in '", getwd(), "'")
+	R.CMD('build', '--no-manual --no-resave-data --no-vignettes ', npath)
+	spkg <- paste(pkg$package, '_', pkg$version, '.tar.gz', sep='')
+	if( !file.exists(spkg) ) stop('Error in building package `', pkg$package,'`')
+	# install
+	message("# Installing package `", pkg$package, "`", if( !is.null(lib) ) str_c("in '", nlib, "'"))
+	R.CMD('INSTALL', if( !is.null(lib) ) paste('-l', nlib), ' --no-docs --no-multiarch --no-demo ', spkg)
 }
 
 #' Compile Source Files from a Development Package
@@ -77,8 +106,15 @@ compile_src <- function(pkg=NULL, load=TRUE){
 		Sys.setenv(R_PACKAGE_DIR=path)
 		R.SHLIB(pkg, " *.cpp ")
 		message("## DONE")
-		if( load )
-			load_c(pkg)
+		if( load ){
+			if( existsFunction('load_dll', where='package:devtools') ){ # post 0.8
+				f <- getFunction('load_dll', where='package:devtools')
+				f(pkg)
+			}else{ # prior 0.8
+				f <- getFunction('load_c', where='package:devtools')
+				f(pkg)
+			}
+		}
 	}
 }
 
