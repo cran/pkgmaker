@@ -2,7 +2,7 @@
 \alias{compile_src}
 \title{Compile Source Files from a Development Package}
 \usage{
-  compile_src(pkg, load = TRUE)
+  compile_src(pkg = NULL, load = TRUE)
 }
 \arguments{
   \item{pkg}{the name of the package to compile}

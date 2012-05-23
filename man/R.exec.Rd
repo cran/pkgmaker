@@ -1,7 +1,7 @@
 \name{R.exec}
 \alias{R.CMD}
-\alias{R.exec}
 \alias{R.SHLIB}
+\alias{R.exec}
 \title{Executing R Commands}
 \usage{
   R.exec(...)

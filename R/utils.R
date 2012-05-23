@@ -37,23 +37,6 @@ require.quiet <- function(package, character.only = FALSE, ...){
 	res
 }
 
-#' Require a Package
-#' 
-#' Require a package with a custom error message
-#' 
-#' @param pkg package name as a character string
-#' @param ... extra arguments concatenated to for the header of the 
-#' error message 
-#' 
-#' @export
-requirePackage <- function(pkg, ...){
-	
-	if( !require(pkg, character.only=TRUE) ){
-		if( nargs() > 1L ) stop(..., " requires package(s) ", str_out(pkg))
-		else stop("Could not find required package(s) ", str_out(pkg))
-	}
-}
-
 
 #' Testing R Version
 #' 
@@ -88,14 +71,14 @@ testRversion <- function(x, test=1L){
 
 #' Complete R version
 #' 
-#' Returns the complete R version, e.g. 2.15
+#' Returns the complete R version, e.g. 2.15.0
 #' 
 #' @export
 #' @examples
 #' Rversion()
 #' 
 Rversion <- function(){
-	paste(R.version$major, R.version$minor, sep='')
+	paste(R.version$major, R.version$minor, sep='.')
 }
 
 #' Prints formatted list of values given as a character vector for use in show 
@@ -134,7 +117,7 @@ str_out <- function(x, max=3L, quote=is.character(x), use.names=FALSE, sep=", ")
 	# add names if necessary
 	if( use.names && !is.null(names(x)) ){
 		nm <- str_c(names(x),'=')
-		x <- paste(ifelse(nm=='=',NULL,nm), x, sep='')
+		x <- paste(ifelse(nm=='=','',nm), x, sep='')
 	}
 	paste(paste(x, collapse=sep), suffix, sep='')
 }
@@ -153,6 +136,14 @@ str_desc <- function(object, exdent=0L){
 				else paste("<", class(x), ">", sep='')
 			})
 	str_wrap(str_out(p, NA, use.names=TRUE, quote=FALSE), exdent=exdent)
+}
+
+# From example in ?toupper
+capwords <- function(s, strict = FALSE) {
+    cap <- function(s) paste(toupper(substring(s,1,1)),
+                {s <- substring(s,2); if(strict) tolower(s) else s},
+                sep = "", collapse = " " )
+    sapply(strsplit(s, split = " "), cap, USE.NAMES = !is.null(names(s)))
 }
 
 #' Differences between strings

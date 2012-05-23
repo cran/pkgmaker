@@ -17,8 +17,10 @@ NULL
 #' the command. 
 #' 
 #' @export
-R.exec <- function(...){	
-	system(paste(file.path(R.home(), 'bin', 'R'),' ', ..., sep=''))
+R.exec <- function(...){
+	cmd <- paste(file.path(R.home(), 'bin', 'R'),' ', ..., sep='')
+	print(cmd)
+	system(cmd)
 }
 
 #' \code{R.CMD} executes R CMD commands.
@@ -49,15 +51,15 @@ R.SHLIB <- function(libname, ...){
 #' 
 #' @return None
 #' @export
-compile_src <- function(pkg, load=TRUE){
+compile_src <- function(pkg=NULL, load=TRUE){
 	
-	if( !missing(pkg) ){
+	if( !is.null(pkg) ){
 		library(devtools)
 		p <- as.package(pkg)
 		path <- p$path
 	}else{
 		pkg <- packageName()
-		path <- packagePath()
+		path <- packagePath(lib=NA) # do not look installed packages
 	}
 	
 	owd <- getwd()
@@ -65,12 +67,16 @@ compile_src <- function(pkg, load=TRUE){
 	
 	# Compile code in /src
 	srcdir <- file.path(path, 'src')
-	if( file.exists(srcdir) ){
-		cat("# DEVMODE: Compiling src/ ... ")		
+	message("# Checking '", srcdir, "' ... ", appendLF=FALSE)
+	if( !file.exists(srcdir) ){
+		message("NO")
+	} else {
+		message("YES")
+		message("## Compiling '",srcdir,"' ##")
 		setwd(srcdir)
 		Sys.setenv(R_PACKAGE_DIR=path)
 		R.SHLIB(pkg, " *.cpp ")
-		cat("OK\n")
+		message("## DONE")
 		if( load )
 			load_c(pkg)
 	}
@@ -79,31 +85,112 @@ compile_src <- function(pkg, load=TRUE){
 #' Package Development Utilities
 #' 
 #' \code{packageEnv} is a slight modification from \code{\link{topenv}}, which 
-#' returns the caller's top environment, which in the case of development packages
-#' is the environment into which the source files are loaded by 
+#' returns the top environment, which in the case of development 
+#' packages is the environment into which the source files are loaded by 
 #' \code{\link[devtools]{load_all}}.
 #' 
-#' @param pkg package name. If missing the environment of the caller package is returned.
+#' @param pkg package name. If missing the environment of the runtime caller 
+#' package is returned.
+#' @param skip a logical that indicates if the calling namespace should be 
+#' skipped.
+#' @param verbose logical that toggles verbosity
 #' 
 #' @rdname devutils
 #' @return an environment
 #' @export
-packageEnv <- function(pkg){
+packageEnv <- function(pkg, skip=FALSE, verbose=FALSE){
 	
 	# return package namespace
 	if( !missing(pkg) ){
-		# if the package is loaded: use asNamespace because as.environment does not
+		# - if the package is loaded: use asNamespace because as.environment does not
 		# return a correct environment (don't know why)
+		# - as.environment('package:*') will return the correct environment
+		# in dev mode.
 		env <- 
 		if( !is.null(path.package(pkg, quiet=TRUE)) ) asNamespace(pkg)
-		else as.environment(str_c('package:', pkg))
+		else if( isLoadingNamespace(pkg) ) getLoadingNamespace(env=TRUE)
+		else if( pkg %in% search() ) as.environment(pkg)
+		else as.environment(str_c('package:', pkg)) # dev mode
 		return(env)
 	}
 	
 	envir = parent.frame()
-	matchThisEnv = getOption("topLevelEnvironment") 
-	pkgmakerEnv <- topenv()
+#	message("parent.frame: ", str_ns(envir))
+	pkgmakerEnv <- topdevenv()
+#	message("pkgmaker ns: ", str_ns(pkgmakerEnv))
+
 	n <- 1
+	skipEnv <- pkgmakerEnv
+	while( identical(e <- topdevenv(envir), skipEnv) 
+			&& !identical(e, emptyenv()) 
+			&& !identical(e, .GlobalEnv) ){
+		if( verbose > 1 ) print(e)
+		n <- n + 1
+		envir <- parent.frame(n)
+	}
+	
+	if( !skip ){
+		if( identical(e, .BaseNamespaceEnv) ){
+			if( verbose ) message("packageEnv - Inferred ", str_ns(skipEnv))
+			return( skipEnv )
+		}
+		if( verbose ) message("packageEnv - Detected ", str_ns(e))
+		return(e)
+	}
+	if( verbose > 1 ) message("Skipping ", str_ns(skipEnv))
+	# go up one extra namespace
+	skipEnv <- e
+	while( identical(e <- topdevenv(envir), skipEnv) 
+			&& !identical(e, emptyenv()) 
+			&& !identical(e, .GlobalEnv) ){
+		if( verbose > 1 ) print(e)
+		n <- n + 1
+		envir <- parent.frame(n)
+	}
+	if( identical(e, .BaseNamespaceEnv) ){
+		if( verbose ) message("packageEnv - Inferred ", str_ns(skipEnv))
+		return( skipEnv )
+	}
+	if( verbose ) message("packageEnv - Detected ", str_ns(e))
+	return(e)
+		
+##   message("skip ns:")
+##	print(skipEnv)
+#	n <- 1
+##	i <- -1
+#	while (!identical(envir, emptyenv())) {
+##		i <- i + 1
+##		message("i=", i)
+##		print(envir)
+#		nm <- attributes(envir)[["names", exact = TRUE]]
+#		nm2 <- environmentName(envir)
+#		if ((is.character(nm) && length(grep("^package:", nm)))
+#				|| length(grep("^package:", nm2))
+#				|| identical(envir, matchThisEnv) || identical(envir, .GlobalEnv) 
+#				|| identical(envir, baseenv()) || isNamespace(envir) 
+#				|| exists(".packageName", envir = envir, inherits = FALSE)){
+#		
+#			# go through pkgmaker frames, and skip caller namespace if requested
+#			if( identical(envir, pkgmakerEnv) 
+#					|| (!is.null(skipEnv) && identical(envir, skipEnv)) ){
+#				n <- n + 1
+#				envir <- parent.frame(n)
+#			}else if( identical(envir, .BaseNamespaceEnv) ){
+#				# this means that top caller is within the pkgmaker package
+#				# as it is highly improbable to evaluated within the base namespace
+#				# except intentionally as evalq(packageEnv(), .BaseNamespaceEnv)
+#    			if( !is.null(skipEnv) ) return(skipEnv)
+#				else return(pkgmakerEnv)
+#			}else
+#				return(envir)
+#		
+#		}else envir <- parent.env(envir)
+#	}
+#	return(.GlobalEnv)
+}
+
+topdevenv <- function (envir = parent.frame(), matchThisEnv = getOption("topLevelEnvironment")) {
+	
 	while (!identical(envir, emptyenv())) {
 		nm <- attributes(envir)[["names", exact = TRUE]]
 		nm2 <- environmentName(envir)
@@ -112,45 +199,58 @@ packageEnv <- function(pkg){
 				|| identical(envir, matchThisEnv) || identical(envir, .GlobalEnv) 
 				|| identical(envir, baseenv()) || isNamespace(envir) 
 				|| exists(".packageName", envir = envir, inherits = FALSE)){
-		
-			# go through pkgmaker frames
-			if( identical(envir, pkgmakerEnv) ){
-				n <- n + 1
-				envir <- parent.frame(n)
-			}else if( identical(envir, .BaseNamespaceEnv) ){
-				# this means that top caller is within the pkgmaker package
-				# as it is highly improbable to evaluated within the base namespace
-				# except intentionally as evalq(packageEnv(), .BaseNamespaceEnv) 
-				return(pkgmakerEnv)
-			}else
-				return(envir)
-		
+			return(envir)
 		}else envir <- parent.env(envir)
 	}
 	return(.GlobalEnv)
 }
 
+#' \code{toppackage} returns the runtime top namespace, i.e. the namespace of 
+#' the top calling namespace, skipping the namespace where \code{toppackage} 
+#' is effectively called.
+#' This is useful for packages that define functions that need to access the 
+#' calling namespace, even from calls nested into calls to another function from
+#' the same package -- in which case \code{topenv} would not give the desired 
+#' environment.   
+#'  
+#' @rdname devutils
+#' @export
+toppackage <- function(verbose=FALSE){
+	packageEnv(skip=TRUE, verbose=verbose)
+}
+
 #' \code{packageName} returns the current package's name.
 #' 
+#' @param envir environment where to start looking for a package name.
+#' The default is to use the \strong{runtime} calling package environment.
 #' @param .Global a logical that indicates if calls from the global 
 #' environment should throw an error (\code{FALSE}: default) or the string
 #' \code{'R_GlobalEnv'}.
+#' @param rm.prefix logical that indicates if an eventual prefix 'package:' 
+#' should be removed from the returned string.
 #' 
 #' @export
 #' @rdname devutils
 #' @return a character string
-packageName <- function(.Global=FALSE){
+packageName <- function(envir=packageEnv(), .Global=FALSE, rm.prefix=TRUE){
+	
+	if( is.null(envir) ) envir <- packageEnv() 
+	if( is.character(envir) ){
+		return( sub("^package:", "", envir) )
+	}
 	
 	# retrieve package environment
-	e <- packageEnv()
+	e <- envir
 	
 	# try with name from environment
 	nm <- environmentName(e)
-	
 	if( identical(e, .GlobalEnv) && .Global ) return(nm)
-	else if( isNamespace(e) ) return(nm)
-	else if( grepl("^package:", nm) ) # should work for devtools packages
-		return(sub("^package:", "", nm))
+	else if( isNamespace(e) || identical(e, baseenv()) ) return(nm)
+	else if( grepl("^package:", nm) ){# should work for devtools packages
+		if( rm.prefix ) 
+			nm <- sub("^package:", "", nm)
+		return(nm)
+	}
 	
 	# try to find the name from the package's environment (namespace) 
 	if( exists('.packageName', e) && .packageName != 'datasets' ){
@@ -166,22 +266,36 @@ packageName <- function(.Global=FALSE){
 	}
 }
 
+#' \code{str_ns} formats a package environment/namespace for log/info messages.
+#' 
+#' @rdname devutils
+#' @export
+str_ns <- function(envir=packageEnv()){
+	if( !is.environment(envir) )
+		stop("Invalid argument: must be an environment [", class(envir), ']')
+	str_c(if( isNamespace(envir) ) 'namespace' else 'environment',
+			" '", packageName(envir, rm.prefix=FALSE), "'")
+}
+
+
 #' \code{packagePath} returns the current package's root directory, which is 
 #' its installation/loading directory in the case of an installed package, or
 #' its source directory served by devtools. 
 #' 
 #' @param package optional name of an installed package 
+#' @param lib path to a package library where to look. If \code{NA}, then only 
+#' development packages are looked up.
 #' @param ... arguments passed to \code{\link{file.path}}.
 #' 
 #' @rdname devutils
 #' @return a character string
 #' @export
-packagePath <- function(..., package=NULL){
+packagePath <- function(..., package=NULL, lib=NULL){
 	
 	# try to find the path from the package's environment (namespace)
-	pname <- if( !is.null(package) ) package else packageName()
+	pname <- packageName(package)
 	# try installed package
-	path <- system.file(package=pname)		
+	path <- if( !isNA(lib) ) system.file(package=pname, lib.loc=lib)		
 
 	# somehow this fails when loading an installed package but is works 
 	# when loading a package during the post-install check
@@ -196,7 +310,11 @@ packagePath <- function(..., package=NULL){
 				p <- as.package(pname)
 				
 				# handle special sub-directories of the package's root directory
-				if( nargs() == 0 || sub("^/?([^/]+).*", "\\1", list(...)[1]) %in% c('tests', 'data','R','src') )
+				dots <- list(...)
+				Rdirs <- c('data', 'R', 'src', 'exec', 'tests', 'demo'
+							, 'exec', 'libs', 'man', 'help', 'html'
+							, 'Meta')
+				if( length(dots) == 0L || sub("^/?([^/]+).*", "\\1", ..1) %in%  Rdirs)
 					p$path
 				else file.path(p$path,'inst')
 				
@@ -257,42 +375,8 @@ as.package <- function(x, ..., quiet=FALSE){
 		}
 	}
 	res <- devtools::as.package(x)
-	if( !is.package(res) ) return()
+	if( !devtools::is.package(res) ) return()
 	res	
-}
-
-parse_deps <- function (string) 
-{
-	if (is.null(string)) 
-		return()
-	string <- gsub("\\s*\\(.*?\\)", "", string)
-	pieces <- strsplit(string, ",")[[1]]
-	pieces <- gsub("^\\s+|\\s+$", "", pieces)
-	pieces[pieces != "R"]
-}
-
-packageDependencies <- function(x, recursive=FALSE){
-	x <- as.package(x)
-	d <- lapply(x[c('depends', 'imports', 'linkingto', 'suggests')], parse_deps)
-	unlist(d)
-}
-
-# taken from devtools:::install_deps but add field Suggests
-install_alldeps <- function (pkg = NULL, ...) 
-{
-	pkg <- as.package(pkg)
-	#parse_deps <- devtools:::parse_deps
-	deps <- c(parse_deps(pkg$depends), parse_deps(pkg$imports), 
-			parse_deps(pkg$linkingto), parse_deps(pkg$suggests))
-	not.installed <- function(x) length(find.package(x, quiet = TRUE)) == 
-				0
-	deps <- Filter(not.installed, deps)
-	if (length(deps) == 0) 
-		return(invisible())
-	message("Installing dependencies for ", pkg$package, ":\n", 
-			paste(deps, collapse = ", "))
-	install.packages(deps, ...)
-	invisible(deps)
 }
 
 NotImplemented <- function(msg){

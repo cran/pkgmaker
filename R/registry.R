@@ -92,19 +92,20 @@ print.package_metaregistry <- function(x, ...){
 setPackageRegistry <- function(name, regobj, ..., overwrite=TRUE){
 	# TODO: change default of overwrite to FALSE
 	nm <- packageName()
+	ns_str <- str_ns()
 	# get meta-registry
 	regenv <- packageRegistry()
 	
 	oldreg <- packageRegistry(name, error=FALSE)
 	if( !is.null(oldreg) ){
 		if( !overwrite )
-			stop("Could not create registry '", name,"' in package ", nm, ": registry already exists")
+			stop("Could not create registry '", name,"' in ", ns_str, ": registry already exists")
 		else{
-			message("Remove registry '", name,"' in package ", nm)
+			message("Remove registry '", name,"' from ", ns_str)
 			regenv$delete_entry(name)
 		}
 	}
-	message("Create registry '", name,"' in package ", nm)
+	message("Create registry '", name,"' in ", ns_str)
 	
 	if( is.character(regobj) ){
 		pref <- nm

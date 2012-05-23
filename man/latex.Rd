@@ -3,9 +3,9 @@
 \alias{latex_preamble}
 \title{LaTeX Utilities for Vignettes}
 \usage{
-  latex_preamble(R = TRUE, CRAN = TRUE,
+  latex_preamble(PACKAGE, R = TRUE, CRAN = TRUE,
     Bioconductor = TRUE, GEO = TRUE, ArrayExpress = TRUE,
-    only = FALSE, file = "")
+    biblatex = FALSE, only = FALSE, file = "")
 
   latex_bibliography(PACKAGE, file = "")
 }
@@ -28,6 +28,10 @@
   ArrayExpress commands should be added (e.g. urls to
   ArrayExpress datasets)}
 
+  \item{biblatex}{logical that indicates if a
+  \code{\\bibliography} command should be added to include
+  references from the package's REFERENCES.bib file.}
+
   \item{only}{a logical that indicates if the only the
   commands whose dedicated argument is not missing should
   be considered.}
@@ -44,6 +48,12 @@
   \code{latex_bibliography} prints or return a LaTeX
   command that includes a package bibliography file if it
   exists.
+}
+\details{
+  Argument \code{PACKAGE} is not required for
+  \code{latex_preamble}, but must be correctly specified to
+  ensure \code{biblatex=TRUE} generates the correct
+  bibliography command.
 }
 \examples{
 latex_preamble()

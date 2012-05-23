@@ -4,13 +4,20 @@
 \alias{packageEnv}
 \alias{packageName}
 \alias{packagePath}
+\alias{str_ns}
+\alias{toppackage}
 \title{Package Development Utilities}
 \usage{
-  packageEnv(pkg)
+  packageEnv(pkg, skip = FALSE, verbose = FALSE)
 
-  packageName(.Global = FALSE)
+  toppackage(verbose = FALSE)
 
-  packagePath(..., package = NULL)
+  packageName(envir = packageEnv(), .Global = FALSE,
+    rm.prefix = TRUE)
+
+  str_ns(envir = packageEnv())
+
+  packagePath(..., package = NULL, lib = NULL)
 
   isPackageInstalled(..., lib.loc = NULL)
 
@@ -18,13 +25,29 @@
 }
 \arguments{
   \item{pkg}{package name. If missing the environment of
-  the caller package is returned.}
+  the runtime caller package is returned.}
+
+  \item{skip}{a logical that indicates if the calling
+  namespace should be skipped.}
+
+  \item{verbose}{logical that toggles verbosity}
+
+  \item{envir}{environment where to start looking for a
+  package name. The default is to use the \strong{runtime}
+  calling package environment.}
 
   \item{.Global}{a logical that indicates if calls from the
   global environment should throw an error (\code{FALSE}:
   default) or the string \code{'R_GlobalEnv'}.}
 
+  \item{rm.prefix}{logical that indicates if an eventual
+  prefix 'package:' should be removed from the returned
+  string.}
+
   \item{package}{optional name of an installed package}
+
+  \item{lib}{path to a package library where to look. If
+  \code{NA}, then only development packages are looked up.}
 
   \item{...}{arguments passed to \code{\link{file.path}}.}
 
@@ -48,12 +71,24 @@
 }
 \description{
   \code{packageEnv} is a slight modification from
-  \code{\link{topenv}}, which returns the caller's top
-  environment, which in the case of development packages is
-  the environment into which the source files are loaded by
+  \code{\link{topenv}}, which returns the top environment,
+  which in the case of development packages is the
+  environment into which the source files are loaded by
   \code{\link[devtools]{load_all}}.
 
+  \code{toppackage} returns the runtime top namespace, i.e.
+  the namespace of the top calling namespace, skipping the
+  namespace where \code{toppackage} is effectively called.
+  This is useful for packages that define functions that
+  need to access the calling namespace, even from calls
+  nested into calls to another function from the same
+  package -- in which case \code{topenv} would not give the
+  desired environment.
+
   \code{packageName} returns the current package's name.
+
+  \code{str_ns} formats a package environment/namespace for
+  log/info messages.
 
   \code{packagePath} returns the current package's root
   directory, which is its installation/loading directory in

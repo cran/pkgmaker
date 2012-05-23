@@ -1,10 +1,10 @@
 \docType{methods}
 \name{utest}
 \alias{utest}
+\alias{utest,RUnitTestSuite-method}
 \alias{utest,character-method}
 \alias{utest,function-method}
 \alias{utest-methods}
-\alias{utest,RUnitTestSuite-method}
 \title{Running Unit Tests}
 \usage{
   utest(x, ...)
@@ -14,9 +14,11 @@
   \S4method{utest}{character}(x,
     filter = "^runit.+\\\\.[rR]$", fun = "^test\\\\.", ...,
     testdir = "tests", framework = c("RUnit", "testthat"),
-    quiet = Sys.getenv("RCMDCHECK") != "FALSE")
+    quiet = Sys.getenv("RCMDCHECK") != "FALSE",
+    lib.loc = NULL)
 
-  \S4method{utest}{RUnitTestSuite}(x, ..., quiet = FALSE)
+  \S4method{utest}{RUnitTestSuite}(x, ..., quiet = FALSE,
+    outdir = NULL)
 }
 \arguments{
   \item{x}{object to which a unit test is attached}
@@ -39,6 +41,12 @@
 
   \item{quiet}{a logical that indicates if the tests should
   be run silently}
+
+  \item{lib.loc}{path to a library where installed packages
+  are searched for. Used is of the form
+  \code{x='package:*'}.}
+
+  \item{outdir}{output directory}
 }
 \description{
   Run unit tests in a variety of settings. This is still

@@ -67,6 +67,10 @@ makeFakeVignette <- function(src, out, PACKAGE=NULL){
 #' \code{latex_preamble} outputs/returns command definition LaTeX commands to 
 #' be put in the preamble of vignettes.
 #' 
+#' Argument \code{PACKAGE} is not required for \code{latex_preamble}, but must 
+#' be correctly specified to ensure \code{biblatex=TRUE} generates the correct
+#' bibliography command.
+#'  
 #' @param R logical that indicate if general R commands should be added 
 #' (e.g. package names, inline R code format commands) 
 #' @param CRAN logical that indicate if general CRAN commands should be added
@@ -77,6 +81,8 @@ makeFakeVignette <- function(src, out, PACKAGE=NULL){
 #' (e.g. urls to GEO datasets) 
 #' @param ArrayExpress logical that indicate if general ArrayExpress commands 
 #' should be added (e.g. urls to ArrayExpress datasets)
+#' @param biblatex logical that indicates if a \code{\\bibliography} command 
+#' should be added to include references from the package's REFERENCES.bib file. 
 #' 
 #' @param only a logical that indicates if the only the commands whose 
 #' dedicated argument is not missing should be considered.
@@ -93,16 +99,20 @@ makeFakeVignette <- function(src, out, PACKAGE=NULL){
 #' latex_preamble(R=FALSE, CRAN=FALSE, GEO=FALSE)
 #' latex_preamble(GEO=TRUE, only=TRUE)
 #' 
-latex_preamble <- function(R=TRUE, CRAN=TRUE, Bioconductor=TRUE
-							, GEO=TRUE, ArrayExpress=TRUE, only=FALSE, file=''){
-	cmd <- "%%%% PKGMAKER COMMANDS %%%%%%"
+latex_preamble <- function(PACKAGE, R=TRUE, CRAN=TRUE, Bioconductor=TRUE
+							, GEO=TRUE, ArrayExpress=TRUE, biblatex=FALSE, only=FALSE, file=''){
+	
+	cmd <- "%%%% PKGMAKER COMMANDS %%%%%%
+\\usepackage{xspace}
+"
 	
 	inc <- function(arg){
 		e <- parent.frame()
 		(!only || eval(substitute(hasArg(arg), list(arg=substitute(arg))), e)) && arg
 	}
 	
-	if( inc(R) ) cmd <- c(cmd, 
+	if( inc(R) ){
+		cmd <- c(cmd, 
 "% R
 \\let\\proglang=\\textit
 \\let\\code=\\texttt 
@@ -111,8 +121,10 @@ latex_preamble <- function(R=TRUE, CRAN=TRUE, Bioconductor=TRUE
 \\newcommand{\\Rpkg}[1]{\\pkgname{#1} package\\xspace}
 \\newcommand{\\citepkg}[1]{\\cite{#1}}
 ")
+}
 
-	if( inc(CRAN) )  cmd <- c(cmd,
+	if( inc(CRAN) ){
+		cmd <- c(cmd,
 "% CRAN
 \\newcommand{\\CRANurl}[1]{\\url{http://cran.r-project.org/package=#1}}
 %% CRANpkg
@@ -126,8 +138,10 @@ latex_preamble <- function(R=TRUE, CRAN=TRUE, Bioconductor=TRUE
 \\newcommand{\\CRANnmf}{\\href{http://cran.r-project.org/package=NMF}{CRAN}}
 \\newcommand{\\CRANnmfURL}{\\url{http://cran.r-project.org/package=NMF}}
 ")
+}
 
-	if( inc(Bioconductor) )  cmd <- c(cmd,
+	if( inc(Bioconductor) ){
+		cmd <- c(cmd,
 "% Bioconductor
 \\newcommand{\\BioCurl}[1]{\\url{http://www.bioconductor.org/packages/release/bioc/html/#1.html}}
 \\newcommand{\\BioCpkg}[1]{\\href{http://www.bioconductor.org/packages/release/bioc/html/#1.html}{\\pkgname{#1}} package\\footnote{\\BioCurl{#1}}}
@@ -137,18 +151,27 @@ latex_preamble <- function(R=TRUE, CRAN=TRUE, Bioconductor=TRUE
 \\newcommand{\\BioCAnnpkg}[1]{\\href{http://www.bioconductor.org/packages/release/data/annotation/html/#1.html}{\\Rcode{#1}} annotation package\\footnote{\\BioCAnnurl{#1}}}
 \\newcommand{\\citeBioCAnnpkg}[1]{\\BioCAnnpkg{#1}~\\cite{#1}}
 ")
+}
 
-	if( inc(GEO) ) cmd <- c(cmd, 
+	if( inc(GEO) ){
+		cmd <- c(cmd, 
 "% GEO
 \\newcommand{\\GEOurl}[1]{\\href{http://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=#1}{#1}\\xspace}
 \\newcommand{\\GEOhref}[1]{\\GEOurl{#1}\\footnote{\\url{http://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=#1}}}
 ")
+	}
 
 	if( inc(ArrayExpress) ) cmd <- c(cmd,
 "% ArrayExpress
 \\newcommand{\\ArrayExpressurl}[1]{\\href{http://www.ebi.ac.uk/arrayexpress/experiments/#1}{#1}\\xspace}
 \\newcommand{\\ArrayExpresshref}[1]{\\ArrayExpressurl{#1}\\footnote{\\url{http://www.ebi.ac.uk/arrayexpress/experiments/#1}}}
 ")
+
+	if( biblatex ){
+		if( missing(PACKAGE) )
+			stop("Argument `PACKAGE` is required when specifying `biblatex=TRUE`.")
+		cmd <- c(cmd, latex_bibliography(PACKAGE, file=NULL))
+	} 
 
 	# output or return commands
 	cmd <- c(cmd, "%%%% END: PKGMAKER COMMANDS %%%%%%\n")
@@ -170,7 +193,7 @@ latex_bibliography <- function(PACKAGE, file=''){
 	
 	# get REFERENCES.bib file
 	reffile <- packageReferenceFile(PACKAGE=PACKAGE)
-	if( !is.file(reffile) ) return()
+	if( !is.file(reffile) ) return(invisible())
 	
 	cmd <- paste("\\bibliography{", gsub("\\.bib$", "", reffile), "}\n", sep='')
 	if( !is.null(file) ) cat(cmd, file=file)
@@ -193,17 +216,20 @@ is.rnw <- function(x){
 #' @param file output file
 #' @param ... extra arguments passed to \code{as.rnw} that can be used to force 
 #' certain building parameters.
-#' @param fig.path specification for the figure path. 
+#' @param fig.path specification for the figure path (used in knitr vignettes only). 
+#' If \code{TRUE} then the figure path is set to \code{'./figure/<basename>/'}.
 #' @param cache.path specification for the cache path.
-#'  
+#' If \code{TRUE} then the figure path is set to \code{'./cache/<basename>/'}.
+#' @param raw a logical that indicates if the raw result for the compilation 
+#' should be returned, instead of the result file path.
+#'   
 #' @rdname vignette
 #' @export
-rnw <- function(x, file=NULL, ..., fig.path=TRUE, cache.path=TRUE){
+rnw <- function(x, file=NULL, ..., fig.path=TRUE, cache.path=TRUE, raw=FALSE){
 	x <- as.rnw(x, ...)	
 	driver <- x$driver
 	
 	comp <- x$compiler
-	res <- 
 	if( comp == 'knitr' ){ # compile with knitr
 		library(knitr)
 		# expand path to cache to fix issue in knitr
@@ -228,13 +254,14 @@ rnw <- function(x, file=NULL, ..., fig.path=TRUE, cache.path=TRUE){
 		opts_chunk$set(...)
 		
 		# run knitr
-		knit(x$file, file)
+		res <- knit(x$file, file)
 		
 	}else{ # compile with Sweave
-		Sweave(x$file, driver=x$driver, ...)
+		res <- Sweave(x$file, driver=x$driver, ...)
 		# move output file
-		if( !is.null(file) )
-			file.rename(file_extension(x$file, 'tex'), file)
+		if( !is.null(file) ){
+			file.rename(res, file)
+		}
 	}
 
 	# Package citations
@@ -244,8 +271,17 @@ rnw <- function(x, file=NULL, ..., fig.path=TRUE, cache.path=TRUE){
 		message('OK')
 	}
 	#
-	
+
 	#x$compiler(x, file, ...)
+
+	# return raw result if required
+	if( raw ) return(res)
+
+	# check for a wrapper main file
+	if( !is.null(x$wrapper) ){
+		res <- x$wrapper
+	}
+	
 	invisible(res)
 }
 
@@ -285,6 +321,8 @@ as.rnw <- function(x, ..., load = TRUE){
 	obj$compiler <- rnwCompiler(obj) %||% 'Sweave'
 	# detect driver
 	obj$driver <- rnwDriver(obj) %||% RweaveLatex()
+	# detect wrapper
+	obj$wrapper <- rnwWrapper(obj)
 	# detect fixed included images
 	obj$includes <- rnwIncludes(obj)
 	# detect children vignettes
@@ -304,29 +342,41 @@ as.rnw <- function(x, ..., load = TRUE){
 
 rnwObject <- function(...) as.rnw(..., load=FALSE)
 
-#' \code{rnwDriver} tries to detect the vignette compiler to use on a vignette
+rnwParser <- function(tag, name=tolower(tag), trim=TRUE){
+	
+	function(x, verbose=TRUE){
+		x <- rnwObject(x)
+		# read all lines in
+		l <- readLines(x$file)
+		
+		# identify driver
+		dr <- str_match(l, str_c("^\\s*%\\s*\\\\Vignette", tag, "\\{([^}]*)\\}"))
+		w <- which(!is.na(dr[,1L]))
+		if( length(w) > 0L ){
+			s <- dr[w[1L],2L]
+			# trim if necessary
+			if( trim ) s <- str_trim(s)
+			if( verbose ) rnw_message("Detected ", name, ": '", s, "'")
+			s
+		}
+	}
+}
+
+#' \code{rnwCompiler} tries to detect the vignette compiler to use on a vignette
 #' source file, e.g., \code{\link{Sweave}} or \code{\link[knitr]{knitr}}.
+#' 
+#' @param verbose logical that toggles verbosity
 #' 
 #' @rdname vignette
 #' @export
-rnwCompiler <- function(x){
-	
-	x <- rnwObject(x)
-	
-	# read all lines in
-	l <- readLines(x$file)
-	
-	# identify driver
-	dr <- str_match(l, "^\\s*%\\s*\\\\VignetteCompiler\\{([^}]*)\\}")
-	w <- which(!is.na(dr[,1L]))
-	if( length(w) > 0L ){
-		s <- str_trim(dr[w[1L],2L])
-		rnw_message("Detected compiler: '", s, "'")
-		s
-	}
-	
-}  
+rnwCompiler <- rnwParser('Compiler')
 
+#' \code{rnwWrapper} tries to detect the type of vignette and if it is meant 
+#' to be wrapped into another main file.
+#' 
+#' @rdname vignette
+#' @export
+rnwWrapper <- rnwParser('Wrapper')
 
 #' \code{rnwDriver} tries to detect Sweave driver to use on a vignette source 
 #' file, e.g., \code{SweaveCache}, \code{highlight}, etc..
@@ -335,17 +385,8 @@ rnwCompiler <- function(x){
 #' @export
 rnwDriver <- function(x){
 	
-	x <- rnwObject(x)
-	
-	# read all lines in
-	l <- readLines(x$file)
-	
-	# identify driver
-	dr <- str_match(l, "^\\s*%\\s*\\\\VignetteDriver\\{([^}]*)\\}")
-	w <- which(!is.na(dr[,1L]))
-	if( length(w) > 0L ){
-		s <- dr[w[1L],2L]
-		rnw_message("Detected Vignette driver: '", str_trim(s), "'")
+	parse_driver <- rnwParser('Driver', trim=FALSE)
+	if( !is.null(s <- parse_driver(x)) ){
 		# eval text
 		eval(parse(text=s))
 	}
@@ -421,26 +462,95 @@ rnwCite <- function(x){
 		message("NONE")
 }
 
+# substitute a makefile template variable 
+subMakeVar <- function(mvar, value, text){
+	sub(str_c('#%', mvar, '%#'), value, text, fixed=TRUE)
+}
+# define a makefile template variable
+defMakeVar <- function(var, value, ..., mvar=var){
+	subMakeVar(mvar, str_c(var, '=', value), ...)
+}
+
+quick_install <- function(path, ..., lib.loc){
+	
+	if( !is.dir(lib.loc) ){
+		stop("Installation directory '", lib.loc, "' does not exist.")
+	}
+	
+	olib <- .libPaths()
+	.libPaths(lib.loc)
+	on.exit( .libPaths(olib) )
+	pkg <- devtools::install(path, ...)
+	
+}
+
 #' \code{vignetteMakefile} returns the path to a generic makefile used to make 
 #' vignettes.
 #' 
-#' @param package package name
+#' @param package package name.
+#' If \code{NULL}, a DESRIPTION file is looked for one directory up: this 
+#' meant to work when building a vignette directly from a package's 
+#' \code{'vignettes'} sub-directory. 
 #' @param user username of the package's author. It is used to compile the 
-#' vignette differently when called locally or on CRAN check machines.  
+#' vignette differently when called locally or on CRAN check machines.
+#' @param skip Vignette files to skip (basename).  
 #' @param print logical that specifies if the path should be printed or
-#' only returned.  
+#' only returned. 
+#' @param template template Makefile to use.
+#' The default is to use the file \dQuote{vignette.mk} shipped with the package
+#' \pkg{pkgmaker} and can be found in its install root directory.
+#' @param temp logical that indicates if the generated makefile should using a 
+#' temporary filename (\code{TRUE}), or simply named \dQuote{vignette.mk}
 #' 
 #' @rdname vignette
 #' @export
-vignetteMakefile <- function(user, package, print=TRUE){
+vignetteMakefile <- function(user=NULL, package=NULL, skip=NULL
+							, print=TRUE, template=NULL, temp=FALSE){
 	
-	# create makefile from template
-	p <- packagePath('vignette.mk', package='pkgmaker')
-	l <- paste(readLines(p), collapse="\n") 
-	l <- sub('#%AUTHOR_USER%#', str_c('AUTHOR_USER=', user), l, fixed=TRUE)
-	l <- sub('#%MAKE_R_PACKAGE%#', str_c('MAKE_R_PACKAGE=', package), l, fixed=TRUE)
+	## create makefile from template
+	# load template makefile
+	if( is.null(template) )
+		template <- packagePath('vignette.mk', package='pkgmaker')
 	
-	mk <- tempfile('vignette_', tmpdir='.', fileext='.mk')
+	l <- paste(readLines(template), collapse="\n")
+    # Check user: LOCAL_MODE if in declared user
+	if( !is.null(user) ){
+		l <- subMakeVar('USER', str_c(user, collapse=', '), l)
+		if( (cuser <- Sys.info()["user"]) %in% user ){
+			l <- defMakeVar('LOCAL_MODE', cuser, l)
+		}
+	}else{
+		l <- subMakeVar('USER', '-', l)
+	}
+	# Package name
+	if( is.null(package) ){
+		df <- file.path(getwd(), '..', 'DESCRIPTION')
+		d <- try(read.dcf(df), silent=TRUE)
+		if( is(d, 'try-error') ){
+			stop("Could not infer package name: file '", df, "' not found.")
+		}
+		package <- d[1L,'Package']
+	}
+	l <- defMakeVar('MAKE_R_PACKAGE', package, l)
+	# Vignettes files:
+    # - look into src/ for real vignettes
+	# - check presence of a test directory ../tests/
+	# - check current directory for non fake vignettes
+	rnwFiles <- NULL
+	# src
+	if( is.dir('src') ) rnwFiles <- list.files('src', pattern="\\.Rnw$")
+	# unit tests
+	if( is.dir('../tests') ) rnwFiles <- c(rnwFiles, str_c(package, '-unitTests.Rnw'))
+	# non-fake vignettes
+    rnwFiles <- c(rnwFiles, list.files('.', pattern="\\.Rnw$"))
+	# substitute in makefile
+	rnwFiles <- unique(rnwFiles)
+	if( !is.null(skip) )
+		rnwFiles <- setdiff(rnwFiles, skip)
+	l <- subMakeVar('RNW_SRCS', paste(rnwFiles, collapse=' '), l)
+	
+	# create makefile
+	mk <- if( temp ) tempfile('vignette_', tmpdir='.', fileext='.mk') else 'vignette.mk'
 	cat(l, file=mk)
 	if ( print ){
 		cat(mk)
