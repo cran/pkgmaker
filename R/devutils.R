@@ -136,6 +136,7 @@ packageEnv <- function(pkg){
 #' environment should throw an error (\code{FALSE}: default) or the string
 #' \code{'R_GlobalEnv'}.
 #' 
+#' @export
 #' @rdname devutils
 #' @return a character string
 packageName <- function(.Global=FALSE){
@@ -169,20 +170,18 @@ packageName <- function(.Global=FALSE){
 #' its installation/loading directory in the case of an installed package, or
 #' its source directory served by devtools. 
 #' 
-#' @param PACKAGE optional name of an installed package 
+#' @param package optional name of an installed package 
 #' @param ... arguments passed to \code{\link{file.path}}.
 #' 
 #' @rdname devutils
 #' @return a character string
-packagePath <- function(..., PACKAGE=NULL){
+#' @export
+packagePath <- function(..., package=NULL){
 	
 	# try to find the path from the package's environment (namespace)
-	path <- 
-		if( !is.null(PACKAGE) )	system.file(package=PACKAGE)
-		else if( exists('.packageName', packageEnv()) && .packageName != 'datasets' ){
-			# get the path from installation
-			system.file(package=.packageName)		
-		}
+	pname <- if( !is.null(package) ) package else packageName()
+	# try installed package
+	path <- system.file(package=pname)		
 
 	# somehow this fails when loading an installed package but is works 
 	# when loading a package during the post-install check
@@ -194,8 +193,7 @@ packagePath <- function(..., PACKAGE=NULL){
 				file.path(info$libname, info$pkgname)
 			else{# we are in dev mode: use devtools
 				library(devtools)
-#				p <- as.package(.LOCAL_PKG_NAME)
-				p <- as.package()
+				p <- as.package(pname)
 				
 				# handle special sub-directories of the package's root directory
 				if( nargs() == 0 || sub("^/?([^/]+).*", "\\1", list(...)[1]) %in% c('tests', 'data','R','src') )
@@ -237,7 +235,65 @@ isPackageInstalled <- function(..., lib.loc=NULL){
 #	gsub("\\\\.\\{(.)\\}", "\\1", x)
 #}
 
+#' \code{as.package} is enhanced version of \code{\link[devtools]{as.package}}, 
+#' that is not exported not to mask the original function.
+#' It could eventually be incorporated into \code{devtools} itself.
+#' Extra arguments in \code{...} are passed to \code{\link{find.package}}. 
+#' 
+#' @param x package specified by its installation/development path or its name
+#' as \code{'package:*'}.
+#' @param quiet a logical that indicate if an error should be thrown if a 
+#' package is not found. It is also passed to \code{\link{find.package}}.
+#' 
+#' 
+#' @rdname devutils
+as.package <- function(x, ..., quiet=FALSE){
+	
+	# check for 'package:*'
+	if( is.character(x) ){
+		i <- grep('^package:', x)
+		if( length(i) > 0L ){
+			x[i] <- sapply(sub('^package:', '', x[i]), find.package, ..., quiet=quiet)
+		}
+	}
+	res <- devtools::as.package(x)
+	if( !is.package(res) ) return()
+	res	
+}
 
+parse_deps <- function (string) 
+{
+	if (is.null(string)) 
+		return()
+	string <- gsub("\\s*\\(.*?\\)", "", string)
+	pieces <- strsplit(string, ",")[[1]]
+	pieces <- gsub("^\\s+|\\s+$", "", pieces)
+	pieces[pieces != "R"]
+}
+
+packageDependencies <- function(x, recursive=FALSE){
+	x <- as.package(x)
+	d <- lapply(x[c('depends', 'imports', 'linkingto', 'suggests')], parse_deps)
+	unlist(d)
+}
+
+# taken from devtools:::install_deps but add field Suggests
+install_alldeps <- function (pkg = NULL, ...) 
+{
+	pkg <- as.package(pkg)
+	#parse_deps <- devtools:::parse_deps
+	deps <- c(parse_deps(pkg$depends), parse_deps(pkg$imports), 
+			parse_deps(pkg$linkingto), parse_deps(pkg$suggests))
+	not.installed <- function(x) length(find.package(x, quiet = TRUE)) == 
+				0
+	deps <- Filter(not.installed, deps)
+	if (length(deps) == 0) 
+		return(invisible())
+	message("Installing dependencies for ", pkg$package, ":\n", 
+			paste(deps, collapse = ", "))
+	install.packages(deps, ...)
+	invisible(deps)
+}
 
 NotImplemented <- function(msg){
 	stop("Not implemented - ", msg)

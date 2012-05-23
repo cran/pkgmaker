@@ -2,10 +2,15 @@
 \alias{cite}
 \title{Citing Package References}
 \usage{
-  cite(key, bibentry, ...)
+  cite(key, ..., REFERENCES = NULL)
 }
 \arguments{
   \item{key}{character vector of BibTex keys}
+
+  \item{...}{extra arguments passed to
+  \code{format.bibentry}.}
+
+  \item{REFERENCES}{package or bibentry specification}
 }
 \value{
   a character string containing the text formated BibTex
@@ -17,5 +22,4 @@
   looked in a file named REFERNCES.bib in the package's
   root directory (i.e. inst/ in development mode).
 }
-\keyword{internal}
 

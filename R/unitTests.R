@@ -288,12 +288,12 @@ checkWarning <- function(expr, expected=NULL, msg=NULL){
 #' Make Vignette for Unit Tests
 #' 
 #' @param pkg Package name
-#' @param file Output Sweave (.Rnw) document
+#' @param file Output file (.Rnw, .tex, or .pdf)
 #' @return Result of running unit test suite
 #'  
 #' @export
 #' 
-makeUnitVignette <- function(pkg, file=paste(pkg, '-unitTests.Rnw', sep='')){
+makeUnitVignette <- function(pkg, file=paste(pkg, '-unitTests.pdf', sep='')){
 	
 	# generate the vignette for unit test on exit
 	if( !is.null(file) )
@@ -352,39 +352,39 @@ makeUnitVignette <- function(pkg, file=paste(pkg, '-unitTests.Rnw', sep='')){
 writeUnitVignette <- function(pkg, file){
 	
 	Rnw.template <- 
-			"
-			\\documentclass[10pt]{article}
-			%\\VignetteIndexEntry{@pkg@-unitTests}
-			\\usepackage{vmargin}
-			\\setmargrb{0.75in}{0.75in}{0.75in}{0.75in}
-			
-			\\RequirePackage{ae,mathpple}    % ae as a default font pkg works with Sweave
-			\\RequirePackage[T1]{fontenc}
-			
-			<<echo=FALSE,print=FALSE>>=
-			pkg <- '@pkg@'
-			require( pkg, character.only=TRUE )
-			prettyVersion <- packageDescription(pkg)$Version
-			prettyDate <- format(Sys.Date(), '%B %e, %Y')
-			authors <- packageDescription(pkg)$Author
-			@
-			
-			\\usepackage[colorlinks]{hyperref}
-			\\author{\\Sexpr{authors}}
-			\\title{\\texttt{\\Sexpr{pkg}}: Unit testing results}
-			\\date{\\texttt{\\Sexpr{pkg}} version \\Sexpr{prettyVersion} as of \\Sexpr{prettyDate}}
-			\\begin{document}
-			\\maketitle
-			
-			\\begin{verbatim}
-			@results@
-			\\end{verbatim}
-			
-			\\section*{Session Information}
-			@sessionInfo@
-			
-			\\end{document}
-			"
+"
+\\documentclass[10pt]{article}
+%\\VignetteIndexEntry{@pkg@-unitTests}
+\\usepackage{vmargin}
+\\setmargrb{0.75in}{0.75in}{0.75in}{0.75in}
+
+\\RequirePackage{ae,mathpple}    % ae as a default font pkg works with Sweave
+\\RequirePackage[T1]{fontenc}
+
+<<echo=FALSE,print=FALSE>>=
+pkg <- '@pkg@'
+require( pkg, character.only=TRUE )
+prettyVersion <- packageDescription(pkg)$Version
+prettyDate <- format(Sys.Date(), '%B %e, %Y')
+authors <- packageDescription(pkg)$Author
+@
+
+\\usepackage[colorlinks]{hyperref}
+\\author{\\Sexpr{authors}}
+\\title{\\texttt{\\Sexpr{pkg}}: Unit testing results}
+\\date{\\texttt{\\Sexpr{pkg}} version \\Sexpr{prettyVersion} as of \\Sexpr{prettyDate}}
+\\begin{document}
+\\maketitle
+
+\\begin{verbatim}
+@results@
+\\end{verbatim}
+
+\\section*{Session Information}
+@sessionInfo@
+
+\\end{document}
+"
 	# load the results of the unit tests
 	results <- file.path('unitTests-results', paste(pkg, '-unitTests.txt', sep=''))
 	results <- 
@@ -403,8 +403,25 @@ writeUnitVignette <- function(pkg, file){
 	# session info (as when calling this function)
 	contents <-	gsub("@sessionInfo@", gsub("\\", "\\\\", paste(toLatex(sessionInfo()), collapse="\n"), fixed=TRUE), contents)
 	
-	# write into the file
-	writeLines(contents, file)
+	fileext <- toupper(file_extension(file))
+	fileext <- charmatch(fileext, c('RNW', 'TEX', 'PDF'))
+	if( isNA(fileext) )
+		stop("Invalid output file extension [",fileext,"] from file '", file, "'")
+	
+	fileRNW <- if( fileext == 1L ) file else str_c(pkg, '-unitTests.Rnw')
+	fileTEX <- if( fileext == 2L ) file else str_c(pkg, '-unitTests.tex')
+	filePDF <- if( fileext == 3L ) file else str_c(pkg, '-unitTests.pdf')
+	
+	# write into Rnw file
+	writeLines(contents, fileRNW)	
+	if( fileext == 1L ) return()
+	
+	# compile vignette
+	rnw(fileRNW, fileTEX)
+	if( fileext == 2L ) return()
+	
+	# Run texi2dvi tex file
+	tools::texi2dvi(fileTEX, pdf = TRUE, clean = TRUE )
 }
 
 # Unit test frameworks data
@@ -639,7 +656,7 @@ setMethod('utest', 'character',
 					}else{
 						# try to find a corresponding development package
 						if( require.quiet(devtools) 
-								&& is.package(pkg <- as.package2(x, error=FALSE)) ){
+								&& is.package(pkg <- as.package(x, quiet=TRUE)) ){
 							load_all(pkg, TRUE)
 							file.path(pkg$path, 'inst', testdir)
 						}else{ # assume x is a path  
@@ -648,8 +665,13 @@ setMethod('utest', 'character',
 					}
 			
 			# check that the path exists
-			if( !file.exists(path) )
-				stop("Unit test directory '", path, "' does not exist")
+			if( !file.exists(path) ){
+				if( !hasArg(testdir) ){
+					path <- file.path(dirname(path), 'unitTests')
+				}
+				if( !file.exists(path) )
+					stop("Unit test directory '", path, "' does not exist")
+			}
 			
 			# detect unit test framework: RUnit or testthat?
 			framework <- 

@@ -4,7 +4,7 @@
 # Creation: 25 Apr 2012
 ###############################################################################
 
-# or-NULL operator
+# or-NULL operator (borrowed from Hadley Wickham)
 '%||%' <- function(x, y) if( !is.null(x) ) x else y
 
 #' Get Anywhere
@@ -96,35 +96,6 @@ testRversion <- function(x, test=1L){
 #' 
 Rversion <- function(){
 	paste(R.version$major, R.version$minor, sep='')
-}
-
-as.package2 <- function(x, error=TRUE){
-	
-	res <- tryCatch(devtools::as.package(x), error= function(e) e)
-	if( !is.package(res) ){
-		#str(res)
-		if( error ) stop(res$message)
-		return()
-	}
-	res
-}
-
-# taken from devtools:::install_deps but add field Suggests
-install_alldeps <- function (pkg = NULL) 
-{
-	pkg <- as.package(pkg)
-	parse_deps <- devtools:::parse_deps
-	deps <- c(parse_deps(pkg$depends), parse_deps(pkg$imports), 
-			parse_deps(pkg$linkingto), parse_deps(pkg$suggests))
-	not.installed <- function(x) length(find.package(x, quiet = TRUE)) == 
-				0
-	deps <- Filter(not.installed, deps)
-	if (length(deps) == 0) 
-		return(invisible())
-	message("Installing dependencies for ", pkg$package, ":\n", 
-			paste(deps, collapse = ", "))
-	install.packages(deps)
-	invisible(deps)
 }
 
 #' Prints formatted list of values given as a character vector for use in show 
@@ -486,8 +457,8 @@ sVariable <- function(default=NULL){
 #' 
 #'  # do something on exit that depends on the error status
 #' 	on.exit({
-#' 		if(success()) cat("no error: do nothing\n") 
-#' 		else cat("error: cleqnup mess\n") 
+#' 		if(success()) cat("Exit with no error: do nothing\n") 
+#' 		else cat("Exit with error: cleaning up the mess ...\n") 
 #' 	})
 #' 	
 #'  # throw an error here

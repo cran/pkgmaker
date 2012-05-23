@@ -24,8 +24,8 @@ f <- function(err){
 
  # do something on exit that depends on the error status
 	on.exit({
-		if(success()) cat("no error: do nothing\\n")
-		else cat("error: cleqnup mess\\n")
+		if(success()) cat("Exit with no error: do nothing\\n")
+		else cat("Exit with error: cleaning up the mess ...\\n")
 	})
 
  # throw an error here

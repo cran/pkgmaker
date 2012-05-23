@@ -2,6 +2,7 @@
 \alias{hasNames}
 \alias{is.dir}
 \alias{isFALSE}
+\alias{is.file}
 \alias{isInteger}
 \alias{isNA}
 \alias{isNumber}
@@ -23,6 +24,8 @@
   isString(x)
 
   is.dir(x)
+
+  is.file(x)
 
   hasNames(x, all = FALSE)
 }
@@ -52,6 +55,8 @@
   Test if an object is a single character string
 
   Tests if a filename is a directory
+
+  Tests if a filename is a file
 
   Tests if an object has names
 }

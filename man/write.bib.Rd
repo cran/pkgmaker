@@ -41,9 +41,9 @@
   in the bibtex package.
 }
 \examples{
-library(bibtex)
+#library(bibtex)
 write.bib(c('bibtex', 'utils', 'tools'), file='references')
-bibs <- read.bib('references.bib')
+bibs <- bibtex::read.bib('references.bib')
 write.bib(bibs, 'references2.bib')
 md5 <- tools::md5sum(c('references.bib', 'references2.bib'))
 md5[1] == md5[2]
@@ -51,6 +51,8 @@ md5[1] == md5[2]
 
 # write to stdout()
 write.bib(c('bibtex', 'utils', 'tools'), file=NULL)
+
+\dontshow{ unlink(c('references.bib', 'references2.bib'))}
 }
 \author{
   Renaud Gaujoux, based on the function

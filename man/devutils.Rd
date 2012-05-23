@@ -1,4 +1,5 @@
 \name{packageEnv}
+\alias{as.package}
 \alias{isPackageInstalled}
 \alias{packageEnv}
 \alias{packageName}
@@ -9,9 +10,11 @@
 
   packageName(.Global = FALSE)
 
-  packagePath(..., PACKAGE = NULL)
+  packagePath(..., package = NULL)
 
   isPackageInstalled(..., lib.loc = NULL)
+
+  as.package(x, ..., quiet = FALSE)
 }
 \arguments{
   \item{pkg}{package name. If missing the environment of
@@ -21,12 +24,20 @@
   global environment should throw an error (\code{FALSE}:
   default) or the string \code{'R_GlobalEnv'}.}
 
-  \item{PACKAGE}{optional name of an installed package}
+  \item{package}{optional name of an installed package}
 
   \item{...}{arguments passed to \code{\link{file.path}}.}
 
   \item{lib.loc}{path to a library of R packages where to
   search the package}
+
+  \item{x}{package specified by its
+  installation/development path or its name as
+  \code{'package:*'}.}
+
+  \item{quiet}{a logical that indicate if an error should
+  be thrown if a package is not found. It is also passed to
+  \code{\link{find.package}}.}
 }
 \value{
   an environment
@@ -50,5 +61,11 @@
   served by devtools.
 
   Tests if a package is installed
+
+  \code{as.package} is enhanced version of
+  \code{\link[devtools]{as.package}}, that is not exported
+  not to mask the original function. It could eventually be
+  incorporated into \code{devtools} itself. Extra arguments
+  in \code{...} are passed to \code{\link{find.package}}.
 }
 

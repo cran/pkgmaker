@@ -63,6 +63,12 @@ isString <- function(x) is.character(x) && length(x) == 1L
 #' @export
 is.dir <- function(x) file_test('-d', x)
 
+
+#' Tests if a filename is a file
+#' @rdname is_something
+#' @export
+is.file <- function(x) file_test('-f', x)
+
 #' Tests if an object has names
 #' 
 #' @param all logical that indicates if the object needs all names non empty
@@ -76,16 +82,16 @@ hasNames <- function(x, all=FALSE){
 
 unit.test(hasNames, {
 			
-	add_names <- function(x) setNames(x, letters[1:length(x)])
-	# vector
-	checkTrue(hasNames( add_names(1:10) ))
-	checkTrue(hasNames( add_names(1:10) , all=TRUE))
-	checkTrue(hasNames( c(add_names(1:10),11) ))
-	checkTrue(!hasNames( c(add_names(1:10),11) , all=TRUE))
-	# list
-	checkTrue(hasNames( add_names(list(1,2,3)) ))
-	checkTrue(hasNames( add_names(list(1,2,3)) , all=TRUE))
-	checkTrue(hasNames( c(add_names(list(1,2,3)),11) ))
-	checkTrue(!hasNames( c(add_names(list(1,2,3)),11) , all=TRUE))
-	
-})
+			add_names <- function(x) setNames(x, letters[1:length(x)])
+			# vector
+			checkTrue(hasNames( add_names(1:10) ))
+			checkTrue(hasNames( add_names(1:10) , all=TRUE))
+			checkTrue(hasNames( c(add_names(1:10),11) ))
+			checkTrue(!hasNames( c(add_names(1:10),11) , all=TRUE))
+			# list
+			checkTrue(hasNames( add_names(list(1,2,3)) ))
+			checkTrue(hasNames( add_names(list(1,2,3)) , all=TRUE))
+			checkTrue(hasNames( c(add_names(list(1,2,3)),11) ))
+			checkTrue(!hasNames( c(add_names(list(1,2,3)),11) , all=TRUE))
+			
+		})

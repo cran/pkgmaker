@@ -59,3 +59,24 @@ source_files <- function(x, pattern=NULL, ...){
 		x <- list.files(x, pattern=pattern, full.names=TRUE)
 	invisible(sapply(x, source, ...))
 }
+
+#' Extract File Extension
+#' 
+#' @param x path as a character vector.
+#' @param ext extension to append instead of the original extension.
+#' 
+#' @export
+#' 
+#' @examples
+#' 
+#' file_extension('alpha.txt')
+#' file_extension(paste('aa.tt', 1:5, sep=''))
+#' # change extension
+#' file_extension(paste('aa.tt', 1:5, sep=''), 'pdf')
+#' file_extension(paste('aatt', 1:5, sep=''), 'pdf')
+#' 
+file_extension <- function(x, ext=NULL){
+	
+	if( is.null(ext) ) sub(".*\\.([^.]{3})$","\\1",x)
+	else str_c(sub("(.*)(\\.([^.]{3}))$","\\1", x), '.', ext)
+}
