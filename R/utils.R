@@ -4,6 +4,8 @@
 # Creation: 25 Apr 2012
 ###############################################################################
 
+library(digest)
+
 # or-NULL operator (borrowed from Hadley Wickham)
 '%||%' <- function(x, y) if( !is.null(x) ) x else y
 
@@ -114,6 +116,7 @@ str_out <- function(x, max=3L, quote=is.character(x), use.names=FALSE, sep=", ")
 			if( isTRUE(quote) ) "'"
 			else if( is.character(quote) ) quote
 	if( !is.null(quote) ) x <- unlist(lapply(x, function(v) paste(quote,v,quote, sep='')))
+	else if( all(sapply(x, isInteger)) ) x <- unlist(lapply(x, function(v) str_c(v,'L')))
 	# add names if necessary
 	if( use.names && !is.null(names(x)) ){
 		nm <- str_c(names(x),'=')
@@ -152,16 +155,25 @@ capwords <- function(s, strict = FALSE) {
 #' 
 #' @param x a single string
 #' @param y a single string
-#' @return an integer vector containing the index of the mis-matched character 
+#' @return an integer vector containing the index of all mis-matched characters
+#' in the first string.
 #' @export
 #' 
 #' @examples
 #' 
+#' # strings to compare
 #' x <- "once upon a time"
 #' y <- "once upon a time there was"
 #' z <- "once upon two times"
+#' 
+#' # diff: x - y
+#' d <- str_diff(x, y)
+#' d
+#' str(d)
+#' 
+#' # other comparisons 
+#' str_diff(y, x)
 #' str_diff(x, x)
-#' str_diff(x, y)
 #' str_diff(x, z)
 #' str_diff(y, z)
 #' 
@@ -171,6 +183,8 @@ str_diff <- function(x, y){
 	n <- min(length(sx), length(sy))
 	res <- mapply('!=', head(sx,n), head(sy,n))
 	wres <- which(res)
+	if( length(sx) > length(sy) )
+		wres <- c(wres, (n+1):length(sx))
 	attr(wres, 'str') <- list(x=x,y=y)
 	class(wres) <- 'str_diff'
 	wres
@@ -179,9 +193,11 @@ str_diff <- function(x, y){
 #' @S3method print str_diff
 print.str_diff <- function(x, ...){
 	s <- attr(x, 'str')
-	n <- min(length(s$x), length(s$y))
-	d <- head(s$x,n)
-	d[!x] <- '*'
+	n <- max(nchar(s$x), nchar(s$y))
+	d <- rep('.', n)
+	d[x] <- '*'
+	if( (n2 <- nchar(s$y)-nchar(s$x)) )
+		d[(n-abs(n2)+1):n] <- if( n2 > 0L ) '-' else '+'
 	cat(str_c(s$x, collapse=''), "\n")
 	cat(str_c(d, collapse=''), "\n")
 	cat(str_c(s$y, collapse=''), "\n")				
@@ -509,4 +525,224 @@ orderVersion <- function(x, decreasing=FALSE){
 #' sortVersion(v)
 sortVersion <- function(x, ...){
 	x[orderVersion(x, ...)]
+}
+
+#' Checking for Missing Arguments
+#' 
+#' This function is identical to \code{\link{hasArg}}, except that 
+#' it accepts the argument name as a character string.
+#' This avoids to have a check NOTE about invisible binding variable.  
+#' 
+#' @param name the name of an argument as a character string.
+#' 
+#' @export
+#' @examples
+#' 
+#' f <- function(...){ hasArg2('abc') }
+#' f(a=1)
+#' f(abc=1)
+#' f(b=1)
+#' 
+hasArg2 <- function (name) 
+{
+	name <- as.name(name)
+	## apply methods::hasArg
+	aname <- as.character(substitute(name))
+	fnames <- names(formals(sys.function(sys.parent())))
+	if (is.na(match(aname, fnames))) {
+		if (is.na(match("...", fnames))) 
+			FALSE
+		else {
+			dotsCall <- eval(quote(substitute(list(...))), sys.parent())
+			!is.na(match(aname, names(dotsCall)))
+		}
+	}
+	else eval(substitute(!missing(name)), sys.frame(sys.parent()))
+	##
+}
+
+#' Exposing Object Attributes
+#' 
+#' The function \code{ExposeAttribute} creates an S3 object that 
+#' exposes all attributes of any R object, by making them accessible via 
+#' methods \code{\link{$}} and/or \code{\link{$<-}}.
+#' 
+#' @param object any R object whose attributes need to be exposed
+#' @param ... attributes, and optionally their respective values or
+#' access permissions.
+#' See argument \code{value} of \code{attr_mode} for details on the
+#' way of specifying these. 
+#' @param .MODE access mode:
+#' \describe{
+#' \item{\dQuote{r}:}{ (read-only) only method \code{$} is defined}
+#' \item{\dQuote{w}:}{ (write-only) only method \code{$<-} is defined}
+#' \item{\dQuote{rw}:}{ (read-write) both methods \code{$} and \code{$<-} 
+#' are defined}
+#' } 
+#' @param .VALUE logical that indicates if the values of named arguments 
+#' in \code{...} should be considered as attribute assignments, 
+#' i.e. that the result object has these attributes set with the specified values.
+#' In this case all these attributes will have the access permission
+#' as defined by argument \code{.MODE}.
+#' 
+#' @export
+ExposeAttribute <- function(object, ..., .MODE='rw', .VALUE=FALSE){
+	
+	# setup exposed arguments
+	args <- list(...)
+	if( length(args) ){
+		# use the same mode for all attributes
+		if( isString(.MODE) == 1L )
+			.MODE <- rep(.MODE, length(args))
+		else if( length(.MODE) != length(args) ){
+			stop("Argument .MODE must provide an access mode for each argument in `...`.")
+		}
+		
+		if( is.null(names(args)) ) # add names if necessary
+			args <- setNames(args, rep('', length(args)))
+		un <- names(args)==''
+		if( any(!sapply(args[un], isString)) )
+			stop("All unnamed argument must be the name of an attribute, i.e. a character string.")
+		
+		# set attributes that have values if requested
+		if( .VALUE ){
+			sapply(names(args)[!un], function(x){
+				attr(object, x) <<- args[[x]]
+			})
+		}else{ # or use the values as access permission
+			.MODE[!un] <- args[!un]
+		}
+		#
+		
+		# store exposed attributes with names as regular expressions
+		eargs <- ifelse(un, args, names(args))
+		eargs <- as.list(setNames(.MODE, eargs))
+		# add ereg start-end
+		names(eargs) <- paste('^', names(eargs), '$', sep='')
+	}else{
+		eargs <- .MODE
+	}
+	
+	# store access rights
+	attr(object, '.ExposeAttribute') <- eargs
+	class(object) <- c(class(object), 'ExposeAttribute')
+	object
+}
+
+.getEAmode <- function(x, name, ..., RAW..=FALSE){
+	ea <- attr(x, '.ExposeAttribute')
+	if( is.null(ea) ) return()
+	if( is.character(ea) && !RAW.. )
+		ea <- list(`^.*$`=ea)
+	if( missing(name) )	return(ea)
+
+	name <- name[name != '.ExposeAttribute']
+	# determine access mode
+	m <- lapply(names(ea), function(p){
+		m <- grep(p, name, value=TRUE)
+		setNames(rep(ea[[p]], length(m)), m)
+	})
+	unlist(m)
+	#
+}
+
+#' @importFrom utils .DollarNames
+#' @S3method .DollarNames ExposeAttribute 
+.DollarNames.ExposeAttribute <- function(x, pattern=""){ 
+	
+	att <- grep(pattern, names(attributes(x)), value=TRUE)
+	if( nchar(pattern) > 1 )
+		att <- unique(c(substring(pattern, 2), att))
+	# filter out based on the access permissions
+	mode <- .getEAmode(x, att)
+	if( !length(mode) ) return(character())
+	mode <- mode[mode != '']
+	# add `<-` suffix to write only attributes
+	if( length(wonly <- which(mode=='w')) )
+		names(mode)[wonly] <- paste(names(mode)[wonly], '<- ')
+	
+	names(mode)
+}
+
+#' @S3method $ ExposeAttribute
+`$.ExposeAttribute` <- function(x, name){
+	if( is.null(attr(x, name)) )
+		stop("Object `", deparse(substitute(x)),"` has no attribute '", name, "'.")
+	mode <- .getEAmode(x, name)
+	if( !length(mode) ){
+		stop("Could not access attribute via `$`: attribute '", name, "' is not exposed. Use `attr(x, '", name, "').")
+	}
+	if( !any(grepl('r', mode)) ){
+		stop("Could not access exposed attribute '", name, "': permission denied [mode='", mode,"'].")
+	}
+	attr(x, name)
+	
+}
+
+#' @S3method $<- ExposeAttribute
+`$<-.ExposeAttribute` <- function(x, name, value){
+	mode <- .getEAmode(x, name)
+	if( !length(mode) ){
+		stop("Could not write attribute via `$<-`: attribute '", name, "' is not exposed. Use `attr(x, '", name, "') <- value.")
+	}
+	if( !any(grepl('w', mode)) ){
+		stop("Could not write attribute '", name, "': permission denied [mode='", mode,"'].")
+	}
+	attr(x, name) <- value
+	x
+}
+
+#' @S3method print ExposeAttribute
+print.ExposeAttribute <- function(x, ...){
+	# remove EA stuff 
+	attr_mode(x) <- NULL
+	# call next print method
+	print(x, ...)
+}
+
+#' \code{attr_mode} and \code{attr_mode<-} get and sets the access mode of 
+#' \code{ExposeAttribute} objects.
+#' 
+#' @param x an \code{ExposeAttribute} object
+#' @param value replacement value for mode.
+#' It can be \code{NULL} to remove the ExposeAttribute wrapper, 
+#' a single character string to define a permission for all atributes
+#' (e.g., \code{'rw'} or \code{'r'}), or a list specifying access permission 
+#' for specific attributes or classes of attributes defined by regular expressions.
+#' For example, \code{list(a='r', b='w', `blabla.*`='rw')} set attribute \code{'a'} 
+#' as read-only, attribute \code{'b'} as write-only, all attributes that start with 
+#' \code{'blabla'} in read-write access.
+#' 
+#' @export
+#' @rdname ExposeAttribute
+attr_mode <- function(x){
+	.getEAmode(x, RAW..=TRUE)
+}
+#' @export
+#' @rdname ExposeAttribute
+`attr_mode<-` <- function(x, value){
+	if( is.null(value) ){
+		attr(x, '.ExposeAttribute') <- NULL
+		class(x) <- class(x)[!class(x) %in% "ExposeAttribute"]
+	}else if( isString(value) ){
+		x <- ExposeAttribute(x, .MODE=value)
+	}else if( is.list(value) ){
+		args <- c(list(x), names(value), list(.MODE=setNames(value, NULL), .VALUE=FALSE))
+		x <- do.call('ExposeAttribute', args)
+	}else{
+		stop("Invalid value: a character string or a list is expected")
+	}
+	x
+}
+
+
+#' Checking R User 
+#' 
+#' Tests if the current R user is amongst a given set of users.
+#' 
+#' @param user the usernames to check for, as a character vector. 
+#' 
+#' @export
+userIs <- function(user){
+	setNames(Sys.info()['user'], NULL) %in% user
 }

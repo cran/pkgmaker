@@ -18,6 +18,8 @@
 #' @export
 packageRegistry <- function(name, error=TRUE){
 	
+	library(registry)
+	
 	# get calling package environment and name
 	e <- packageEnv()
 	nm <- packageName()

@@ -152,3 +152,52 @@ setCRANMirror <- function(url=CRAN, unique=TRUE){
 #' install.packages('pkgmaker', repos=CRAN)
 #' }
 CRAN <- 'http://cran.r-project.org'
+
+
+#' Adding Package Libraries
+#' 
+#' Prepend/append paths to the library path list, using \code{\link{.libPaths}}.
+#' 
+#' This function is meant to be more convenient than \code{.libPaths}, which requires 
+#' more writing if one wants to:
+#' \itemize{
+#' \item sequentially add libraries;
+#' \item append and not prepend new path(s);
+#' \item keep the standard user library in the search path.
+#' }
+#' 
+#' @param ... paths to add to .libPath
+#' @param append logical that indicates that the paths should be appended
+#' rather than prepended.
+#' 
+#' @export
+#' 
+#' @examples
+#' ol <- .libPaths()
+#' # called sequentially, .libPaths only add the last library
+#' show( .libPaths('.') )
+#' show( .libPaths(tempdir()) )
+#' # restore
+#' .libPaths(ol)
+#' 
+#' # .libPaths does not keep the standard user library
+#' show( .libPaths() ) 
+#' show( .libPaths('.') )
+#' # restore
+#' .libPaths(ol)
+#' 
+#' # with add_lib
+#' show( add_lib('.') )
+#' show( add_lib(tempdir()) )
+#' show( add_lib('..', append=TRUE) )
+#' 
+#' # restore 
+#' .libPaths(ol)
+#' 
+add_lib <- function(..., append=FALSE){
+	
+	p <- 
+	if( append ) c(.libPaths(), ...)
+	else c(..., .libPaths())
+	.libPaths(p)
+}

@@ -218,6 +218,7 @@ runVignette.default <- function(x, file=NULL, ...){
 ## #' If \code{TRUE} then the figure path is set to \code{'./figure/<basename>/'}.
 ## #' @param cache.path specification for the cache path.
 ## #' If \code{TRUE} then the figure path is set to \code{'./cache/<basename>/'}.
+#' @S3method runVignette rnw_knitr 
 runVignette.rnw_knitr <- function(x, file=NULL, ..., fig.path=TRUE, cache.path=TRUE){
 	library(knitr)
 	# expand path to cache to fix issue in knitr
@@ -245,6 +246,7 @@ runVignette.rnw_knitr <- function(x, file=NULL, ..., fig.path=TRUE, cache.path=T
 	knit(x$file, file)
 }
 
+#' @S3method runVignette rnw_sweave 
 runVignette.rnw_sweave <- function(x, file=NULL, ...){
 	res <- Sweave(x$file, driver=x$driver, ...)
 	# move output file

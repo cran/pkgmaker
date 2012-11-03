@@ -3,6 +3,8 @@
 # Author: Renaud Gaujoux
 ###############################################################################
 
+library(stringr)
+
 test.errorCheck <- function(){
 	
 	f <- function(err=''){
@@ -37,3 +39,59 @@ test.errorCheck <- function(){
 	checkIdentical(out, 'no error', 'If tryCatch-catched error: correctly detected no error')
 }
 
+
+test.ExposeAttribute <- function(){
+	
+	
+	x <- 1:10
+	checkIdentical(ExposeAttribute(x), {attr_mode(x) <- 'rw'; x}
+		, "Using ExposeAttribute() and attr_mode <- 'rw' is equivalent")
+	x <- 1:10
+	checkIdentical(capture.output(print(ExposeAttribute(x, a='r', b='rw'))), capture.output(print(x))
+		, "Printing object with exposed attribute is identical to plain print")
+
+	checkSet <- function(x, name, msg, ...){
+		attr(x, name) <- 1
+		y <- ExposeAttribute(x, ...)
+		eval(parse(text=str_c('y$', name, ' <- 1')))
+		attr_mode(y) <- NULL 
+		checkIdentical(x, y, msg)
+	}
+	checkSetException <- function(x, name, msg, ...){
+		y <- ExposeAttribute(x, ...)
+		checkException(eval(parse(text=str_c('y$', name, ' <- 1'))), msg)
+	}
+	
+	checkSet(x, 'a', "Set works if default")
+	checkSet(x, 'a', .MODE='rw', "Set works if all args are 'rw'")
+	checkSet(x, 'a', a='rw', "Set works if specified arg is 'rw'")
+	checkSet(x, 'a', a='w', "Set works if specified arg is 'w'")
+	checkSet(x, 'a', a='rw', b='r', "Set works if specified arg is 'rw', even if others are not")
+	checkSet(x, 'ab', ab='rw', `a.*`='r', "Set works if specified arg is 'rw', even if another match is not")
+	checkSetException(x, 'a', .MODE='r', "Set throws an error if access right is 'r'")
+	checkSetException(x, 'a', a='r', "Set throws an error if specific access right is 'r'")
+	checkSetException(x, 'a', a='', "Set throws an error if specific access right is ''")
+	
+	checkGet <- function(x, name, msg, ...){
+		attr(x, name) <- 1
+		y <- ExposeAttribute(x, ...)
+		a <- eval(parse(text=str_c('y$', name)))
+		checkIdentical(attr(x, name), a, msg)
+	}
+	checkGetException <- function(x, name, msg, ...){
+		y <- ExposeAttribute(x, ...)
+		checkException(eval(parse(text=str_c('y$', name))), msg)
+	}
+	
+	checkGet(x, 'a', "Get works if default")
+	checkGet(x, 'a', .MODE='rw', "Get works if all args are 'rw'")
+	checkGet(x, 'a', a='rw', "Get works if specified arg is 'rw'")
+	checkGet(x, 'a', a='r', "Get works if specified arg is 'r'")
+	checkGet(x, 'a', a='rw', b='w', "Get works if specified arg is 'rw', even if others are not")
+	checkGet(x, 'ab', ab='r', `a.*`='w', "Get works if specified arg is 'rw', even if another match is not")
+	checkGetException(x, 'a', .MODE='w', "Get throws an error if access right is 'r'")
+	checkGetException(x, 'a', a='w', "Get throws an error if specific access right is 'r'")
+	checkGetException(x, 'a', a='', "Get throws an error if specific access right is ''")
+	
+	
+}

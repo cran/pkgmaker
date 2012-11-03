@@ -1,15 +1,19 @@
 \name{getLoadingNamespace}
 \alias{addNamespaceExport}
 \alias{getLoadingNamespace}
+\alias{isDevNamespace}
 \alias{isLoadingNamespace}
 \alias{isNamespaceLoaded}
 \title{Namespace Development Functions}
 \usage{
-  getLoadingNamespace(env = FALSE, info = FALSE)
+  getLoadingNamespace(env = FALSE, info = FALSE,
+    nodev = FALSE)
 
-  isLoadingNamespace(name)
+  isLoadingNamespace(name, nodev = FALSE)
 
   isNamespaceLoaded(name)
+
+  isDevNamespace(name)
 
   addNamespaceExport(x)
 }
@@ -24,6 +28,9 @@
   \item{name}{the name of a namespace whose loading state
   is tested. If missing \code{isLoadingNamespace} test if
   any namespace is being loaded.}
+
+  \item{nodev}{logical that indicates if loading devtools
+  namespace should be discarded.}
 
   \item{x}{character vector containing the names of R
   objects to export in the loading namespace.}
@@ -42,8 +49,12 @@
 
   Tests if a namespace is being loaded.
 
-  Tests if a given namespace is loaded, without loading it,
-  contrary to \code{\link{isNamespace}}.
+  \code{isNamespaceLoaded} tests if a given namespace is
+  loaded, without loading it, contrary to
+  \code{\link{isNamespace}}.
+
+  \code{isDevNamespace} tests the -- current -- namespace
+  is a devtools namespace.
 
   Dynamically adds exported objects into the loading
   namespace.

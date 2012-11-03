@@ -16,7 +16,7 @@ NULL
 #' @param ... arguments passed to \code{\link{requirePackage}}.
 #' 
 #' @return nothing
-#' @keywords internal
+#' @export
 #' 
 requireRUnit <- local({
 			
@@ -313,8 +313,15 @@ makeUnitVignette <- function(pkg, file=paste(pkg, '-unitTests.pdf', sep=''), ...
 		stop("Could not load package '", pkg, "' for testing [libPath= ", str_out(.libPaths(), Inf), "]")
 	}
 	
-	# run unit tests if not check or if the test results are not there (e.g., R CMD build) 
-	if( !check || !is.dir(utestPath(package=package)) ){
+	# run unit tests if not check or if the test results are not there (e.g., R CMD build)
+#	if( userIs('renaud') ){
+#		env <- str_trim(capture.output(system('env', intern=TRUE)))
+#		if( check )	write(env, file="~/check_env.txt")
+#		else write(env, file="~/make_env.txt")
+#	}
+	
+#	if( !check || !is.dir(utestPath(package=package)) ){
+	if( !check ){
 		
 		# run unit tests
 		tests <- utest(package, ...)
@@ -722,6 +729,13 @@ setMethod('utest', 'character',
 				file.remove(opath, recursive=TRUE) 
 			}
 			dir.create(opath, recursive=TRUE)
+			# copy results in working directory on exit
+			on.exit(
+				{ if( file.exists(opath) )
+					file.copy(opath, '.', recursive=TRUE)
+				}
+			, add=TRUE)
+			#
 			
 			if( is.dir(path) ){ # all tests in a directory
 				if( framework == 'RUnit' ){ # RUnit
@@ -782,7 +796,6 @@ setMethod('utest', 'RUnitTestSuite',
 		
 		## Report to HTML file
 		printHTMLProtocol(tests, fileName=paste(pathReport, ".html", sep=""))
-		printHTMLProtocol(tests, fileName=paste(basename(pathReport), ".html", sep=""))
 		
 		## Return stop() to cause R CMD check stop in case of
 		##  - failures i.e. FALSE to unit tests or

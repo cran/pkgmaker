@@ -69,7 +69,7 @@ quickinstall <- function(path, lib=NULL){
 	if( !file.exists(spkg) ) stop('Error in building package `', pkg$package,'`')
 	# install
 	message("# Installing package `", pkg$package, "`", if( !is.null(lib) ) str_c("in '", nlib, "'"))
-	R.CMD('INSTALL', if( !is.null(lib) ) paste('-l', nlib), ' --no-docs --no-multiarch --no-demo ', spkg)
+	R.CMD('INSTALL', if( !is.null(lib) ) paste('-l', nlib), ' --no-docs --no-multiarch --no-demo --with-keep.source ', spkg)
 }
 
 #' Compile Source Files from a Development Package
@@ -132,7 +132,7 @@ compile_src <- function(pkg=NULL, load=TRUE){
 #' @param verbose logical that toggles verbosity
 #' 
 #' @rdname devutils
-#' @return an environment
+#' @return \code{packageEnv} returns an environment
 #' @export
 packageEnv <- function(pkg, skip=FALSE, verbose=FALSE){
 	
@@ -152,12 +152,12 @@ packageEnv <- function(pkg, skip=FALSE, verbose=FALSE){
 	
 	envir = parent.frame()
 #	message("parent.frame: ", str_ns(envir))
-	pkgmakerEnv <- topdevenv()
+	pkgmakerEnv <- topenv()
 #	message("pkgmaker ns: ", str_ns(pkgmakerEnv))
 
 	n <- 1
 	skipEnv <- pkgmakerEnv
-	while( identical(e <- topdevenv(envir), skipEnv) 
+	while( identical(e <- topenv(envir), skipEnv) 
 			&& !identical(e, emptyenv()) 
 			&& !identical(e, .GlobalEnv) ){
 		if( verbose > 1 ) print(e)
@@ -176,7 +176,7 @@ packageEnv <- function(pkg, skip=FALSE, verbose=FALSE){
 	if( verbose > 1 ) message("Skipping ", str_ns(skipEnv))
 	# go up one extra namespace
 	skipEnv <- e
-	while( identical(e <- topdevenv(envir), skipEnv) 
+	while( identical(e <- topenv(envir), skipEnv) 
 			&& !identical(e, emptyenv()) 
 			&& !identical(e, .GlobalEnv) ){
 		if( verbose > 1 ) print(e)
@@ -189,70 +189,75 @@ packageEnv <- function(pkg, skip=FALSE, verbose=FALSE){
 	}
 	if( verbose ) message("packageEnv - Detected ", str_ns(e))
 	return(e)
-		
-##   message("skip ns:")
-##	print(skipEnv)
-#	n <- 1
-##	i <- -1
-#	while (!identical(envir, emptyenv())) {
-##		i <- i + 1
-##		message("i=", i)
-##		print(envir)
-#		nm <- attributes(envir)[["names", exact = TRUE]]
-#		nm2 <- environmentName(envir)
-#		if ((is.character(nm) && length(grep("^package:", nm)))
-#				|| length(grep("^package:", nm2))
-#				|| identical(envir, matchThisEnv) || identical(envir, .GlobalEnv) 
-#				|| identical(envir, baseenv()) || isNamespace(envir) 
-#				|| exists(".packageName", envir = envir, inherits = FALSE)){
-#		
-#			# go through pkgmaker frames, and skip caller namespace if requested
-#			if( identical(envir, pkgmakerEnv) 
-#					|| (!is.null(skipEnv) && identical(envir, skipEnv)) ){
-#				n <- n + 1
-#				envir <- parent.frame(n)
-#			}else if( identical(envir, .BaseNamespaceEnv) ){
-#				# this means that top caller is within the pkgmaker package
-#				# as it is highly improbable to evaluated within the base namespace
-#				# except intentionally as evalq(packageEnv(), .BaseNamespaceEnv)
-#    			if( !is.null(skipEnv) ) return(skipEnv)
-#				else return(pkgmakerEnv)
-#			}else
-#				return(envir)
-#		
-#		}else envir <- parent.env(envir)
-#	}
-#	return(.GlobalEnv)
 }
 
-topdevenv <- function (envir = parent.frame(), matchThisEnv = getOption("topLevelEnvironment")) {
-	
-	while (!identical(envir, emptyenv())) {
-		nm <- attributes(envir)[["names", exact = TRUE]]
-		nm2 <- environmentName(envir)
-		if ((is.character(nm) && length(grep("^package:", nm)))
-				|| length(grep("^package:", nm2))
-				|| identical(envir, matchThisEnv) || identical(envir, .GlobalEnv) 
-				|| identical(envir, baseenv()) || isNamespace(envir) 
-				|| exists(".packageName", envir = envir, inherits = FALSE)){
-			return(envir)
-		}else envir <- parent.env(envir)
-	}
-	return(.GlobalEnv)
-}
-
-#' \code{toppackage} returns the runtime top namespace, i.e. the namespace of 
-#' the top calling namespace, skipping the namespace where \code{toppackage} 
+#' \code{topns_name} returns the name of the runtime sequence of top namespace(s), 
+#' i.e. the name of the top calling package(s), from top to bottom.
+#' 
+#' \code{topns_name}: the top namespace is is not necessarily the namespace where \code{topns_name} 
 #' is effectively called.
 #' This is useful for packages that define functions that need to access the 
 #' calling namespace, even from calls nested into calls to another function from
 #' the same package -- in which case \code{topenv} would not give the desired 
 #' environment.   
+#' 
+#' @param n number of namespaces to return
+#' @param strict a logicical that indicates if the global environment should 
+#' be considered as a valid namespace.
+#' @param unique logical that indicates if the result should be reduced
+#' to contain only one occurence of each namespace. 
 #'  
 #' @rdname devutils
 #' @export
-toppackage <- function(verbose=FALSE){
-	packageEnv(skip=TRUE, verbose=verbose)
+topns_name <- function(n=1L, strict=TRUE, unique=TRUE){
+	
+	if( n==1L && !is.null(ns <- getLoadingNamespace()) ){
+		return(ns)
+	}
+	nf <- sys.nframe()
+	i <- 0
+	res <- character()
+	while( i <= nf && length(res) < n ){
+		e <- sys.frame(i)
+		if( !strict || !identical(e, .GlobalEnv) ){
+			pkg <- getPackageName(e, create=FALSE)
+			if( pkg != '' ){
+				res <- c(res, pkg)
+			}
+		}
+		i <- i + 1
+	}
+	
+	if( !length(res) ){# try with packageEnv
+		e <- packageEnv(skip=TRUE)
+		if( isNamespace(e) ){
+			res <- getPackageName(e)
+#			print(res)
+		}else{
+			#warning('Could not find top namespace.', immediate.=TRUE)
+			return('')
+		}
+	}
+	
+	if( unique || n==1L ) res <- match.fun('unique')(res)
+	if( length(res) || n>1L ) res else ''
+}
+
+#' \code{topns} returns the runtime top namespace, i.e. the namespace of 
+#' the top calling package, possibly skipping the namespace where \code{topns} 
+#' is effectively called.
+#' This is useful for packages that define functions that need to access the 
+#' calling namespace, even from calls nested into calls to another function from
+#' the same package -- in which case \code{topenv} would not give the desired 
+#' environment.
+#'  
+#' @rdname devutils
+#' @export
+topns <- function(strict=TRUE){
+	ns <- topns_name(n=1L, strict=strict)
+	if( ns == '.GlobalEnv' ) return( .GlobalEnv )
+	else if( nchar(ns) ) asNamespace(ns)
+	#packageEnv(skip=TRUE, verbose=verbose)
 }
 
 #' \code{packageName} returns the current package's name.
@@ -337,26 +342,21 @@ packagePath <- function(..., package=NULL, lib=NULL){
 	# when loading a package during the post-install check
 	if( is.null(path) || path == '' ){
 		# get the info from the loadingNamespace
-		info <- getLoadingNamespace(info=TRUE)
-		path <- 
-			if( !is.null(info) ) # check whether we are loading the namespace 
-				file.path(info$libname, info$pkgname)
-			else{# we are in dev mode: use devtools
-				library(devtools)
-				p <- as.package(pname)
-				
-				# handle special sub-directories of the package's root directory
-				dots <- list(...)
-				Rdirs <- c('data', 'R', 'src', 'exec', 'tests', 'demo'
-							, 'exec', 'libs', 'man', 'help', 'html'
-							, 'Meta')
-				if( length(dots) == 0L || sub("^/?([^/]+).*", "\\1", ..1) %in%  Rdirs)
-					p$path
-				else file.path(p$path,'inst')
-				
-			}
-	}	
+		if( !is.null(info <- getLoadingNamespace(info=TRUE)) )
+			path <- file.path(info$libname, info$pkgname)
+	}
 	stopifnot( !is.null(path) && path != '' )
+	
+	# for development packages: add inst prefix if necessary
+	if( isDevNamespace(pname) ){
+		# handle special sub-directories of the package's root directory
+		dots <- list(...)
+		Rdirs <- c('data', 'R', 'src', 'exec', 'tests', 'demo'
+				, 'exec', 'libs', 'man', 'help', 'html'
+				, 'Meta')
+		if( length(dots) && !sub("^/?([^/]+).*", "\\1", ..1) %in%  Rdirs)
+			path <- file.path(path,'inst')
+	}
 	
 	# add other part of the path
 	file.path(path, ...)	

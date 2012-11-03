@@ -1,14 +1,14 @@
 \name{is_something}
 \alias{hasNames}
 \alias{is.dir}
-\alias{is.file}
 \alias{isFALSE}
+\alias{is.file}
 \alias{isInteger}
 \alias{isNA}
 \alias{isNumber}
 \alias{isReal}
-\alias{isString}
 \alias{is_something}
+\alias{isString}
 \title{Testing Object Type}
 \usage{
   isNA(x)

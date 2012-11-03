@@ -1,10 +1,10 @@
 \docType{methods}
 \name{utest}
 \alias{utest}
-\alias{utest,RUnitTestSuite-method}
 \alias{utest,character-method}
 \alias{utest,function-method}
 \alias{utest-methods}
+\alias{utest,RUnitTestSuite-method}
 \title{Running Unit Tests}
 \usage{
   utest(x, ...)

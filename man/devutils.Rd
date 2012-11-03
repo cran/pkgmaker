@@ -5,12 +5,15 @@
 \alias{packageName}
 \alias{packagePath}
 \alias{str_ns}
-\alias{toppackage}
+\alias{topns}
+\alias{topns_name}
 \title{Package Development Utilities}
 \usage{
   packageEnv(pkg, skip = FALSE, verbose = FALSE)
 
-  toppackage(verbose = FALSE)
+  topns_name(n = 1L, strict = TRUE, unique = TRUE)
+
+  topns(strict = TRUE)
 
   packageName(envir = packageEnv(), .Global = FALSE,
     rm.prefix = TRUE)
@@ -31,6 +34,15 @@
   namespace should be skipped.}
 
   \item{verbose}{logical that toggles verbosity}
+
+  \item{n}{number of namespaces to return}
+
+  \item{strict}{a logicical that indicates if the global
+  environment should be considered as a valid namespace.}
+
+  \item{unique}{logical that indicates if the result should
+  be reduced to contain only one occurence of each
+  namespace.}
 
   \item{envir}{environment where to start looking for a
   package name. The default is to use the \strong{runtime}
@@ -63,7 +75,7 @@
   \code{\link{find.package}}.}
 }
 \value{
-  an environment
+  \code{packageEnv} returns an environment
 
   a character string
 
@@ -76,9 +88,17 @@
   environment into which the source files are loaded by
   \code{\link[devtools]{load_all}}.
 
-  \code{toppackage} returns the runtime top namespace, i.e.
-  the namespace of the top calling namespace, skipping the
-  namespace where \code{toppackage} is effectively called.
+  \code{topns_name}: the top namespace is is not
+  necessarily the namespace where \code{topns_name} is
+  effectively called. This is useful for packages that
+  define functions that need to access the calling
+  namespace, even from calls nested into calls to another
+  function from the same package -- in which case
+  \code{topenv} would not give the desired environment.
+
+  \code{topns} returns the runtime top namespace, i.e. the
+  namespace of the top calling package, possibly skipping
+  the namespace where \code{topns} is effectively called.
   This is useful for packages that define functions that
   need to access the calling namespace, even from calls
   nested into calls to another function from the same
