@@ -14,22 +14,22 @@ NULL
 #' @return \code{TRUE} or \code{FALSE}
 NULL
 
-#' Tests if a variable is exactly NA (logical, character, numeric or integer)
+#' \code{is_NA} tests if a variable is exactly NA (logical, character, numeric or integer)
 #' 
 #' @param x an R object
 #' @rdname is_something
 #' @export
-isNA <- function(x) 
+is_NA <- function(x) 
 	identical(x, NA) || identical(x, as.character(NA)) || identical(x, as.numeric(NA)) || identical(x, as.integer(NA))  
 
-#' Tests if a variable is exactly FALSE
+#' \code{isFALSE} Tests if a variable is exactly FALSE.
 #' 
 #' @rdname is_something
 #' @seealso \code{\link{isTRUE}}
 #' @export
 isFALSE <- function(x) identical(x, FALSE)
 
-#' Tests if a variable is a single number
+#' \code{isNumber} tests if a variable is a single number
 #' 
 #' @rdname is_something
 #' @export
@@ -37,7 +37,7 @@ isNumber <- function(x){
 	is.numeric(x) && length(x) == 1
 }
 
-#' Tests if a variable is a single real number
+#' \code{isReal} tests if a variable is a single real number
 #' 
 #' @rdname is_something
 #' @export
@@ -45,7 +45,7 @@ isReal <- function(x){
 	isNumber(x) && !is.integer(x)
 }
 
-#' Tests if an object is a single integer
+#' \code{isInteger} tests if an object is a single integer
 #' @rdname is_something
 #' @export
 isInteger <- function(x){ 
@@ -53,23 +53,42 @@ isInteger <- function(x){
 }
 
 
-#' Test if an object is a single character string
+#' \code{isString} tests if an object is a character string. 
+#' 
+#' @param y character string to compare with.
+#' @param ignore.case logical that indicates if the comparison 
+#' should be case sensistive.
+#' 
 #' @rdname is_something
 #' @export
-isString <- function(x) is.character(x) && length(x) == 1L
+isString <- function(x, y, ignore.case=FALSE){
+	if( res <- is.character(x) && length(x) == 1L ){
+		if( !missing(y) ){
+			if( !isString(y) ) stop("Invalid argument 'y': must be a string itself.")
+			if( ignore.case ) {
+				x <- toupper(x)
+				y <- toupper(y)
+			}
+			res <-  x == y
+		}
+	}
+	res
+}
 
-#' Tests if a filename is a directory
+#' \code{is.dir} tests if a filename is a directory.
+#' 
 #' @rdname is_something
 #' @export
 is.dir <- function(x) file_test('-d', x)
 
 
-#' Tests if a filename is a file
+#' \code{is.file} tests if a filename is a file.
+#' 
 #' @rdname is_something
 #' @export
 is.file <- function(x) file_test('-f', x)
 
-#' Tests if an object has names
+#' \code{hasNames} tests if an object has names.
 #' 
 #' @param all logical that indicates if the object needs all names non empty
 #' @rdname is_something

@@ -226,8 +226,11 @@ runVignette.default <- function(x, file=NULL, ...){
 runVignette.rnw_knitr <- function(x, file=NULL, ..., fig.path=TRUE, cache.path=TRUE){
 	library(knitr)
 	# expand path to cache to fix issue in knitr
-	bname <- sub("\\..{3}$", '', basename(x$file))
-	
+	bname <- sub("\\..{3}$", '', basename(x$file))	
+	# add suffix for windows
+	if( .Platform$OS.type == 'windows' ){ 
+		bname <- paste(bname, '-win', sep='')
+	}
 	# cache.path
 	if( !isFALSE(cache.path) ){
 		if( isTRUE(cache.path) ){
@@ -288,6 +291,8 @@ runVignette.rnw_sweave <- function(x, file=NULL, ...){
 #' @rdname vignette
 #' @export
 rnw <- function(x, file=NULL, ..., raw=FALSE){
+	
+	library(methods)
 	# load rnw file
 	x <- as.rnw(x, ...)	
 	
@@ -520,8 +525,13 @@ rnwCite <- function(x){
 	# \cite{Rpackage:pkgname, ...} - like
 	cite2 <- .parse(l, "\\\\cite[^{ ]*\\{([^}]*)\\}", 2L)
 	if( length(cite2) ){
-		cite2 <- .parse(cite2, '.*Rpackage:([^,}]+).*', 2L)
+ 		cite2 <- .parse(cite2, '.*Rpackage:([^,}]+).*', 2L)
 		cite <- c(cite, cite2)
+	}
+	# remove Rpackage prefix
+	if( length(cite) ){
+    cite <- unlist(strsplit(cite, ","))
+	  cite <- gsub('^Rpackage:', '', cite)
 	}
 	
 	rnw_message("Detected package citation(s): ", appendLF=FALSE)
@@ -562,8 +572,6 @@ quick_install <- function(path, ..., lib.loc){
 #' If \code{NULL}, a DESRIPTION file is looked for one directory up: this 
 #' meant to work when building a vignette directly from a package's 
 #' \code{'vignettes'} sub-directory. 
-#' @param user username of the package's author. It is used to compile the 
-#' vignette differently when called locally or on CRAN check machines.
 #' @param skip Vignette files to skip (basename).  
 #' @param print logical that specifies if the path should be printed or
 #' only returned. 
@@ -572,30 +580,47 @@ quick_install <- function(path, ..., lib.loc){
 #' \pkg{pkgmaker} and can be found in its install root directory.
 #' @param temp logical that indicates if the generated makefile should using a 
 #' temporary filename (\code{TRUE}), or simply named \dQuote{vignette.mk}
+#' @param checkMode logical that indicates if the vignettes should be generated as in a 
+#' CRAN check (\code{TRUE}) or in development mode, in which case \code{pdflatex}, \code{bibtex}, 
+#' and, optionally, \code{qpdf} are required.
+#' @param user character vector containing usernames that enforce \code{checkMode=TRUE}, 
+#' if the function is called from within their session.
 #' 
 #' @rdname vignette
 #' @export
-vignetteMakefile <- function(user=NULL, package=NULL, skip=NULL
-							, print=TRUE, template=NULL, temp=FALSE){
+vignetteMakefile <- function(package=NULL, skip=NULL, print=TRUE, template=NULL, temp=FALSE
+                             , checkMode = isCRANcheck()
+                             , user = NULL){
 	
 	library(methods)
 	## create makefile from template
 	# load template makefile
 	if( is.null(template) )
-		template <- packagePath('vignette.mk', package='pkgmaker')
-	
+		template <- packagePath('vignette.mk', package='pkgmaker')	
 	l <- paste(readLines(template), collapse="\n")
-    # Check user: LOCAL_MODE if in declared user
-	localMode <- FALSE
-	if( !is.null(user) ){
-		l <- subMakeVar('USER', str_c(user, collapse=', '), l)
-		if( (cuser <- Sys.info()["user"]) %in% user ){
+  
+	# R_BIN
+	l <- subMakeVar('R_BIN', R.home('bin'), l)
+  #
+  
+  # Check user: LOCAL_MODE if in declared user
+	localMode <- !checkMode
+	cuser <- Sys.info()["user"]
+	l <- subMakeVar('VIGNETTE_USER', cuser, l)
+  maintainers <- '-'
+  if( !is.null(user) ){
+		maintainers <- str_c(user, collapse=', ')
+		if( cuser %in% user ){
 			localMode <- TRUE
-			l <- defMakeVar('LOCAL_MODE', cuser, l)
 		}
-	}else{
-		l <- subMakeVar('USER', '-', l)
 	}
+	l <- subMakeVar('VIGNETTE_MAINTAINERS', maintainers, l)
+	
+  # define variable LOCAL_MODE
+	if( localMode ){
+	  l <- defMakeVar('LOCAL_MODE', cuser, l)
+  }
+  
 	# Package name
 	if( is.null(package) ){
 		df <- file.path(getwd(), '..', 'DESCRIPTION')
@@ -616,6 +641,16 @@ vignetteMakefile <- function(user=NULL, package=NULL, skip=NULL
 		d <- as.list(as.data.frame(d, stringsAsFactors=FALSE))
 	}
 	l <- defMakeVar('MAKE_R_PACKAGE', package, l)
+  # R_LIBS: add package's dev lib if necessary 
+  Rlibs <- NULL
+  if( localMode && is.dir(devlib <- file.path(getwd(), '..', '..', 'lib')) ){
+	  Rlibs <- devlib
+  }
+  Rlibs <- paste(c(Rlibs, "$(TMP_INSTALL_DIR)", "$(R_LIBS)"), collapse=.Platform$path.sep)
+	l <- subMakeVar('R_LIBS_DEV', Rlibs, l)
+	# TMP_INSTALL_DIR: temporary install directory
+	l <- subMakeVar('TMP_INSTALL_DIR', file.path(dirname(tempdir()), basename(tempfile('Rpkglib_'))), l)
+	
 	# Vignettes files:
     # - look into src/ for real vignettes
 	# - check presence of a test directory ../tests/
