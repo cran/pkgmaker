@@ -585,12 +585,17 @@ quick_install <- function(path, ..., lib.loc){
 #' and, optionally, \code{qpdf} are required.
 #' @param user character vector containing usernames that enforce \code{checkMode=TRUE}, 
 #' if the function is called from within their session.
+#' @param tests logical that enables the compilation of a vignette that gathers all unit 
+#' test results.
+#' Note that this means that all unit tests are run before generating the vignette.
+#' However, unit tests are not (re)-run at this stage when the vignettes are built 
+#' when checking the package with \code{R CMD check}.
 #' 
 #' @rdname vignette
 #' @export
 vignetteMakefile <- function(package=NULL, skip=NULL, print=TRUE, template=NULL, temp=FALSE
                              , checkMode = isCRANcheck()
-                             , user = NULL){
+                             , user = NULL, tests=TRUE){
 	
 	library(methods)
 	## create makefile from template
@@ -659,7 +664,7 @@ vignetteMakefile <- function(package=NULL, skip=NULL, print=TRUE, template=NULL,
 	# src
 	if( is.dir('src') ) rnwFiles <- list.files('src', pattern="\\.Rnw$")
 	# unit tests
-	if( is.dir('../tests') ) rnwFiles <- c(rnwFiles, str_c(package, '-unitTests.Rnw'))
+	if( tests && is.dir('../tests') ) rnwFiles <- c(rnwFiles, str_c(package, '-unitTests.Rnw'))
 	# non-fake vignettes
     rnwFiles <- c(rnwFiles, list.files('.', pattern="\\.Rnw$"))
 	# substitute in makefile
@@ -682,4 +687,32 @@ vignetteMakefile <- function(package=NULL, skip=NULL, print=TRUE, template=NULL,
 		cat(mk)
 	}
 	invisible(l)
+}
+
+#' Compact PDF at Best
+#' 
+#' Compact PDFs using either \code{gs_quality='none'} or \code{'ebook'}, 
+#' depending on which compacts best (as per CRAN check criteria).
+#' 
+#' @inheritParams tools::compactPDF
+#' 
+#' @rdname vignette
+#' @export
+compactVignettes <- function(paths, ...){
+	
+	td <- tempfile(basename(paths))
+	file.copy(paths, td)
+	res <- tools::compactPDF(td, gs_quality = "none", ...) # use qpdf
+	diff_none <- format(res, diff = 1e5)
+	res <- tools::compactPDF(td, gs_quality = "ebook", ...)
+	diff_ebook <- format(res, diff = 2.5e5) # 250 KB for now
+	
+	if( length(diff_ebook) ){
+		tools::compactPDF(paths, gs_quality = "ebook", ...)
+		invisible('ebook')
+	}else{
+		tools::compactPDF(paths, gs_quality = "none", ...)
+		invisible('none')
+	}
+	
 }

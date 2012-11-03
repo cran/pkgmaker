@@ -1,5 +1,6 @@
 \name{rnw}
 \alias{as.rnw}
+\alias{compactVignettes}
 \alias{rnw}
 \alias{rnwChildren}
 \alias{rnwCompiler}
@@ -25,7 +26,9 @@
 
   vignetteMakefile(package = NULL, skip = NULL,
     print = TRUE, template = NULL, temp = FALSE,
-    checkMode = isCRANcheck(), user = NULL)
+    checkMode = isCRANcheck(), user = NULL, tests = TRUE)
+
+  compactVignettes(paths, ...)
 }
 \arguments{
   \item{x}{vignette source file specification as a path or
@@ -74,6 +77,17 @@
   \item{user}{character vector containing usernames that
   enforce \code{checkMode=TRUE}, if the function is called
   from within their session.}
+
+  \item{tests}{logical that enables the compilation of a
+  vignette that gathers all unit test results. Note that
+  this means that all unit tests are run before generating
+  the vignette. However, unit tests are not (re)-run at
+  this stage when the vignettes are built when checking the
+  package with \code{R CMD check}.}
+
+  \item{paths}{A character vector of paths to PDF files, or
+  a length-one character vector naming a directory, when
+  all \file{.pdf} files in that directory will be used.}
 }
 \description{
   \code{rnw} provides a unified interface to run vignettes
@@ -105,5 +119,9 @@
 
   \code{vignetteMakefile} returns the path to a generic
   makefile used to make vignettes.
+
+  Compact PDFs using either \code{gs_quality='none'} or
+  \code{'ebook'}, depending on which compacts best (as per
+  CRAN check criteria).
 }
 
