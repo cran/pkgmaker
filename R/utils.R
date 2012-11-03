@@ -4,8 +4,6 @@
 # Creation: 25 Apr 2012
 ###############################################################################
 
-library(digest)
-
 # or-NULL operator (borrowed from Hadley Wickham)
 '%||%' <- function(x, y) if( !is.null(x) ) x else y
 
@@ -83,8 +81,10 @@ Rversion <- function(){
 	paste(R.version$major, R.version$minor, sep='.')
 }
 
-#' Prints formatted list of values given as a character vector for use in show 
-#' methods or error/warning messages.
+#' Formatting Utilities
+#' 
+#' \code{str_out} formats character vectors for use in show methods or 
+#' error/warning messages.
 #' 
 #' @param x character vector
 #' @param max maximum number of values to appear in the list. If \code{x} has 
@@ -108,7 +108,11 @@ Rversion <- function(){
 #' @export
 str_out <- function(x, max=3L, quote=is.character(x), use.names=FALSE, sep=", "){
 	if( isNA(max) ) max <- Inf
-	suffix <- if( length(x) > max ) ", ..."
+	suffix <- NULL
+	if( max > 2 && length(x) > max ){
+		suffix <- "..."
+		x <- c(head(x, max-1), tail(x, 1))
+	}
 	x <- head(x, max)
 	
 	# add quotes if necessary
@@ -122,10 +126,14 @@ str_out <- function(x, max=3L, quote=is.character(x), use.names=FALSE, sep=", ")
 		nm <- str_c(names(x),'=')
 		x <- paste(ifelse(nm=='=','',nm), x, sep='')
 	}
-	paste(paste(x, collapse=sep), suffix, sep='')
+	# insert suffix
+	if( !is.null(suffix) ){
+		x <- c(head(x, length(x)-1L), suffix, tail(x, 1L))
+	}
+	paste(paste(x, collapse=sep), sep='')
 }
 
-#' Builds formatted string from a list of complex values.
+#' \code{str_desc} builds formatted string from a list of complex values.
 #' 
 #' @param object an R object
 #' @param exdent extra indentation passed to str_wrap, and used if the output 
@@ -141,6 +149,17 @@ str_desc <- function(object, exdent=0L){
 	str_wrap(str_out(p, NA, use.names=TRUE, quote=FALSE), exdent=exdent)
 }
 
+#' \code{str_fun} extracts and formats a function signature.
+#' It typically formats the output \code{capture.output(args(object))}.
+#' @rdname str_out
+#' @export
+#' @examples 
+#' str_fun(install.packages)
+str_fun <- function(object){
+	s <- capture.output(args(object))
+	paste(s[-length(s)], collapse="\n")
+}
+
 # From example in ?toupper
 capwords <- function(s, strict = FALSE) {
     cap <- function(s) paste(toupper(substring(s,1,1)),
@@ -149,7 +168,7 @@ capwords <- function(s, strict = FALSE) {
     sapply(strsplit(s, split = " "), cap, USE.NAMES = !is.null(names(s)))
 }
 
-#' Differences between strings
+#' Finding Differences Between Strings
 #' 
 #' Computes which characters differ between two strings.
 #' 
@@ -245,7 +264,7 @@ extractLocalFun <- function(f){
 #' @return a paired list like the one returned by \code{\link{formals}}. 
 #' 
 #' @export
-#' @importFrom codetools getAssignedVar
+#' @import codetools
 #' @rdname formals
 allFormals <- function(f){
 	
@@ -428,7 +447,26 @@ oneoffVariable <- function(default=NULL){
 #}
 
 
-# Static Variable
+#' Global Static Variable
+#' 
+#' \code{sVariable} defines a function that acts as a global
+#' static variable.
+#' 
+#' @param default default value for the static variable. 
+#' 
+#' @export
+#' @examples 
+#' 
+#' # define variable
+#' x <- sVariable(1)
+#' # get value (default)
+#' x()
+#' # set new value: return old value
+#' old <- x(3)
+#' old
+#' # get new value
+#' x()
+#' 
 sVariable <- function(default=NULL){
 	.val <- default
 	function(value){
@@ -746,3 +784,122 @@ attr_mode <- function(x){
 userIs <- function(user){
 	setNames(Sys.info()['user'], NULL) %in% user
 }
+
+#' Expanding Lists
+#' 
+#' \code{expand_list} expands a named list with a given set of default items,
+#' if these are not already in the list, partially matching their names.  
+#' 
+#' @param x input list
+#' @param ... extra named arguments defining the default items.
+#' A list of default values can also be passed as a a single unnamed argument.
+#' @param .exact logical that indicates if the names in \code{x} should be 
+#' partially matched against the defaults.
+#' @param .names logical that only used when \code{.exact=FALSE} and indicates
+#' that the names of items in \code{x} that partially match some defaults should
+#' be expanded in the returned list.
+#' 
+#' @return a list  
+#' 
+#' @export 
+#' @examples 
+#' 
+#' expand_list(list(a=1, b=2), c=3)
+#' expand_list(list(a=1, b=2, c=4), c=3)
+#' # with a list
+#' expand_list(list(a=1, b=2), list(c=3, d=10))
+#' # no partial match
+#' expand_list(list(a=1, b=2, c=5), cd=3)
+#' # partial match with names expanded
+#' expand_list(list(a=1, b=2, c=5), cd=3, .exact=FALSE)
+#' # partial match without expanding names
+#' expand_list(list(a=1, b=2, c=5), cd=3, .exact=FALSE, .names=FALSE)
+#' 
+#' # works also inside a function to expand a call with default arguments
+#' f <- function(...){
+#' 	cl  <- match.call()
+#' 	expand_list(cl, list(a=3, b=4), .exact=FALSE)
+#' }
+#' f()
+#' f(c=1)
+#' f(a=2)
+#' f(c=1, a=2)
+#' 
+expand_list <- function(x, ..., .exact=TRUE, .names=!.exact){
+	
+	# extract defaults from ... arguments
+	defaults <- list(...)
+	if( length(defaults) == 1L && is.null(names(defaults)) ){
+		defaults <- defaults[[1L]]
+	}
+	# early exit if no defaults
+	if( !length(defaults) ) return(x)
+	
+	# match names from x in defaults
+	x_ex <- x
+	if( !.exact ){
+		i <- pmatch(names(x), names(defaults))
+		# first expand names if necessary
+		if( length(w <- which(!is.na(i))) ){
+			names(x_ex)[w] <- names(defaults)[i[w]]
+			# apply to as well if necessary
+			if( .names ) names(x)[w] <- names(defaults)[i[w]]
+		}
+	}
+	
+	# expand list
+	i <- match(names(defaults), names(x_ex))
+	if( length(w <- which(is.na(i))) ){
+		n <- names(defaults)[w]
+		lapply(n, function(m) x[[m]] <<- defaults[[m]])
+	}
+	
+	x
+}
+
+#' \code{expand_dots} expands the \code{...} arguments of the function
+#' in which it is called with default values, using \code{expand_list}.
+#' It can \strong{only} be called from inside a function.
+#' 
+#' @param .exclude optional character vector of argument names to exclude 
+#' from expansion. 
+#'
+#' @export
+#' @rdname expand_list
+#' 
+#' @examples
+#' # expanding dot arguments
+#' 
+#' f <- function(...){ 
+#' 	expand_dots(list(a=2, bcd='a', xxx=20), .exclude='xxx') 
+#' }
+#' 
+#' # add default value for all arguments 
+#' f()
+#' # add default value for `bcd` only
+#' f(a=10)
+#' # expand names
+#' f(a=10, b=4)
+#' 
+expand_dots <- function(..., .exclude=NULL){
+	
+	dotsCall <- as.list(eval(quote(substitute(list(...))), sys.parent()))
+	if( length(dotsCall) >= 1L ) dotsCall <- dotsCall[-1L]
+	
+	# extract defaults from ... arguments
+	defaults <- list(...)
+	if( length(defaults) == 1L && is.null(names(defaults)) ){
+		defaults <- defaults[[1L]]
+	}
+	if( length(defaults) ){
+		excl <- names(allFormals(sys.function(sys.parent())))
+		if( !is.null(.exclude) ) excl <- c(excl, .exclude)
+		defaults <- defaults[!names(defaults) %in% excl]
+		dotsCall <- expand_list(dotsCall, defaults, .exact=FALSE)
+	}
+	#
+	
+	# return expanded dot args
+	dotsCall
+}
+

@@ -4,25 +4,83 @@
 # Creation: 25 Apr 2012
 ###############################################################################
 
+# fix some functions of registry objects
+fix_registry <- function(regobj){
+	
+	# get private environment
+	.REGENV <- environment(environment(regobj$delete_entry)$f)
+	
+	# dummy variables for R CMD check
+	PERMISSIONS <- 
+	.get_entry_indices <-  
+	.get_entry_names <- 
+	SEALED_ENTRIES <-
+	DATA <- 
+	.delete_entry <- 
+	.get_entries <- 
+	NULL
+	
+	# fix bug in delete_entry
+	hook <- function(...){
+		key <- list(...)
+		if( length(key) == 1L && isString(key[[1L]]) ){
+			key <- list(...)
+			if (!PERMISSIONS["delete_entries"]) 
+				stop("Deletion of entries not allowed.", call. = FALSE)
+			entry_index <- .get_entry_indices(key)
+			# fix
+			if( key[[1L]] %in% .get_entry_names() )
+				entry_index <- match(key[[1L]], .get_entry_names())
+			#end_fix
+			if (length(entry_index) != 1) 
+				stop("Key specification must be unique.", call. = FALSE)
+			if (entry_index %in% SEALED_ENTRIES) 
+				stop(paste("Deletion of entry not allowed."), call. = FALSE)
+			DATA[entry_index] <<- NULL
+		} else .delete_entry(...)
+	}
+	environment(hook) <- .REGENV
+	regobj$delete_entry <- hook
+	#
+	
+	# fix bug in get_entry
+	hook <- function(...){
+		key <- list(...)
+		if( length(key) == 1L && isString(key[[1L]]) ){
+			res <- .get_entries(...)
+			if( key[[1L]] %in% names(res) )
+				res[[key[[1L]]]]
+			else res[[1L]] 
+		}else .get_entries(...)[[1]]
+	}
+	environment(hook) <- .REGENV
+	regobj$get_entry <- hook
+	#
+	
+	regobj
+}
 
 #' Package Registry
 #' 
 #' @param name Name of a sub-registry
 #' @param error a logical that indicate whether an error is thrown if the 
-#' sub-registry is not found (default) or just \code{NULL}. 
+#' sub-registry is not found (default) or just \code{NULL}.
+#' @param package package where to look for the registry.
+#' If \code{NULL} this will defaults to the top caller package. 
 #' 
 #' @return a \code{\link[registry:regobj]{registry}} object or \code{NULL} (see argument 
 #' \code{error}).
 #' 
 #' @rdname registry
 #' @export
-packageRegistry <- function(name, error=TRUE){
+packageRegistry <- function(name, error=TRUE, package=NULL){
 	
 	library(registry)
 	
 	# get calling package environment and name
-	e <- packageEnv()
-	nm <- packageName()
+	e <- 
+	if( is.environment(package) ) package else packageEnv(package)
+	nm <- packageName(e)
 	
 	# create registry environment if necessary
 	if( !exists('.packageRegistry', e) ){
@@ -33,6 +91,10 @@ packageRegistry <- function(name, error=TRUE){
 		meta$set_field("key", type="character", is_key = TRUE, index_FUN = match_exact)
 		meta$set_field("regobj", type="registry", is_mandatory = TRUE)
 		meta$set_field("description", type="character", is_mandatory = TRUE)
+		
+		# fix registry
+		meta <- fix_registry(meta)
+		
 		# store within the calling package environment
 		e$.packageRegistry <- meta
 	}
@@ -82,27 +144,42 @@ print.package_metaregistry <- function(x, ...){
 #' @param regobj a \code{\link[registry:regobj]{registry}} object or a single character 
 #' string that indicates the class of the objects that are stored in the 
 #' sub-registry.
+#' @param description short description line about the registry.
+#' It is recommended to provide such description as it makes clearer the purpose of the 
+#' registry.
+#' This description is listed  
 #' @param ... named values used to set extra information about the new registry, that 
-#' is stored in dedicated fields.
-#' Currently only the field \code{description=character()} is defined.
+#' are stored in dedicated fields.
+#' Currently not used, as no extra field other than \code{'description'} is defined.
 #' @param overwrite a logical that indicate if an existing registry with the same 
 #' should be overwritten if it exists.
 #' 
 #' @inheritParams packageRegistry
 #' @rdname registry
 #' @export
-setPackageRegistry <- function(name, regobj, ..., overwrite=TRUE){
-	# TODO: change default of overwrite to FALSE
+setPackageRegistry <- function(name, regobj, description='', ..., overwrite=FALSE){
+	
+	library(registry)
+	
 	nm <- packageName()
 	ns_str <- str_ns()
 	# get meta-registry
 	regenv <- packageRegistry()
 	
+	# force overwrite in dev mode
+	if( missing(overwrite) && isDevNamespace(nm) ){
+		overwrite <- TRUE
+	}
+	
 	oldreg <- packageRegistry(name, error=FALSE)
 	if( !is.null(oldreg) ){
-		if( !overwrite )
+		if( !overwrite ){
+			if( isLoadingNamespace() ){ # exit if loading a namespace
+				message("NOTE: Did not create registry '", name,"' in ", ns_str, ": registry already exists.")
+				return(oldreg)
+			}
 			stop("Could not create registry '", name,"' in ", ns_str, ": registry already exists")
-		else{
+		}else{
 			message("Remove registry '", name,"' from ", ns_str)
 			regenv$delete_entry(name)
 		}
@@ -120,11 +197,13 @@ setPackageRegistry <- function(name, regobj, ..., overwrite=TRUE){
 		# object
 		regobj$set_field("object", type=objtype, is_mandatory=TRUE, validity_FUN = validObject)
 	}
+	# fix registry
+	regobj <- fix_registry(regobj)
 	
 	# create new meta entry
-	regenv$set_entry(key=name, regobj=regobj, ...)
+	regenv$set_entry(key=name, regobj=regobj, description=description, ...)
 	# return newly created registry
-	regenv[[name]]$regobj
+	regenv$get_entry(name)$regobj
 }
 
 #' Finds an entry in a registry.

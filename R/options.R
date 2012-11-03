@@ -34,6 +34,12 @@ setupPackageOptions <- function(..., NAME=NULL, ENVIR=parent.frame(), RESET=FALS
 	
 	defaults <- .list_or_named_dots(...)
 	
+	# do not write into the Global environment
+	e <- parent.frame()
+	if( missing(ENVIR) && identical(e, .GlobalEnv) ){
+		ENVIR <- NULL
+	}
+	
 	# get calling package
 	pkg <- packageName(.Global=TRUE)
 	
@@ -253,14 +259,17 @@ as.package_options <- function(..., defaults=NULL){
 		defaults <- .OPTOBJ$.defaults
 		if( ALL ){
 			.OPTOBJ$.options <- NULL
-		}else if( length(list(...)) > 0L ){
+		}
+		if( length(list(...)) > 0L ){
 			onames <- c(...)
 			if( !is.character(onames) )
 				stop('character strings expected for resetting option names')
-			o <- .OPTOBJ$options()
-			defaults <- defaults[names(o) %in% onames]
+			defaults <- defaults[names(defaults) %in% onames]
+			if( length(not_default <- onames[!onames %in% names(defaults)]) ){
+				.OPTOBJ$.options[not_default] <- NULL
+			}
 		}
-		if( !is.null(defaults) ){
+		if( length(defaults) ){
 			.OPTOBJ$options(defaults)
 		}
 	}

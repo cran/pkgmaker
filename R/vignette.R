@@ -134,7 +134,11 @@ latex_preamble <- function(PACKAGE, R=TRUE, CRAN=TRUE, Bioconductor=TRUE
 \\def\\@@CRANpkg#1{\\href{http://cran.r-project.org/package=#1}{\\pkgname{#1}} package\\footnote{\\CRANurl{#1}}}
 \\makeatother
 %% citeCRANpkg
-\\newcommand{\\citeCRANpkg}[1]{\\CRANpkg{#1}~\\cite{#1}}
+\\makeatletter
+\\def\\citeCRANpkg{\\@ifstar\\@citeCRANpkg\\@@citeCRANpkg}
+\\def\\@citeCRANpkg#1{\\CRANpkg{#1}\\cite*{Rpackage:#1}}
+\\def\\@@citeCRANpkg#1{\\CRANpkg{#1}~\\cite{Rpackage:#1}}
+\\makeatother
 \\newcommand{\\CRANnmf}{\\href{http://cran.r-project.org/package=NMF}{CRAN}}
 \\newcommand{\\CRANnmfURL}{\\url{http://cran.r-project.org/package=NMF}}
 ")
@@ -145,11 +149,11 @@ latex_preamble <- function(PACKAGE, R=TRUE, CRAN=TRUE, Bioconductor=TRUE
 "% Bioconductor
 \\newcommand{\\BioCurl}[1]{\\url{http://www.bioconductor.org/packages/release/bioc/html/#1.html}}
 \\newcommand{\\BioCpkg}[1]{\\href{http://www.bioconductor.org/packages/release/bioc/html/#1.html}{\\pkgname{#1}} package\\footnote{\\BioCurl{#1}}}
-\\newcommand{\\citeBioCpkg}[1]{\\BioCpkg{#1}~\\cite{#1}}
+\\newcommand{\\citeBioCpkg}[1]{\\BioCpkg{#1}~\\cite{Rpackage:#1}}
 % Bioconductor annotation
 \\newcommand{\\BioCAnnurl}[1]{\\url{http://www.bioconductor.org/packages/release/data/annotation/html/#1.html}}
 \\newcommand{\\BioCAnnpkg}[1]{\\href{http://www.bioconductor.org/packages/release/data/annotation/html/#1.html}{\\Rcode{#1}} annotation package\\footnote{\\BioCAnnurl{#1}}}
-\\newcommand{\\citeBioCAnnpkg}[1]{\\BioCAnnpkg{#1}~\\cite{#1}}
+\\newcommand{\\citeBioCAnnpkg}[1]{\\BioCAnnpkg{#1}~\\cite{Rpackage:#1}}
 ")
 }
 
@@ -243,7 +247,18 @@ runVignette.rnw_knitr <- function(x, file=NULL, ..., fig.path=TRUE, cache.path=T
 	opts_chunk$set(...)
 	
 	# run knitr
-	knit(x$file, file)
+	e <- new.env()
+	if( FALSE && (is.null(file) || file_extension(file) %in% c('tex', 'pdf')) ){
+		ofile <- if( file_extension(file) == 'pdf' ) file else NULL 
+		knit2pdf(x$file, ofile, envir=e)
+		if( is.null(file) ){
+			# remove pdf file
+			unlink(file.path(getwd(), basename(file_extension(x$file, 'pdf'))))
+		} else if( file_extension(file) == 'tex' ){
+			# move tex file
+			file.rename(file_extension(file, 'tex'), file)
+		}
+	}else knit(x$file, file, envir=e)
 }
 
 #' @S3method runVignette rnw_sweave 
@@ -296,7 +311,7 @@ rnw <- function(x, file=NULL, ..., raw=FALSE){
 	# Package citations
 	if( !is.null(keys <- x$cite) ){
 		message("# Writing package bibtex file [", length(keys)," key(s)] ... ", appendLF=FALSE)
-		write.bib(keys, file='Rpackages.bib', verbose=FALSE)
+		write.bib(keys, file='Rpackages.bib', prefix='Rpackage:', verbose=FALSE)
 		message('OK')
 	}
 	#
@@ -493,14 +508,26 @@ rnwCite <- function(x){
 	
 	# read all lines in
 	l <- readLines(x$file)
+
+	.parse <- function(x, pattern, idx){
+		dr <- str_match_all(l, pattern)
+		dr <- dr[sapply(dr, length)>0L]
+		unlist(lapply(dr, '[', , idx))
+	}
 	
-	# identify driver
-	dr <- str_match(l, "\\\\cite((CRAN)|(BioC)|(BioCAnn))pkg\\{([^}]*)\\}")
-	w <- which(!is.na(dr[,6L]))
-	rnw_message("Detected package citation: ", appendLF=FALSE)
-	if( length(w) > 0L ){
-		inc <- unique(str_trim(dr[w,6L]))
-		message(str_out(inc))
+	# extract package citations: \citeCRANpkg - like
+	cite <- .parse(l, "\\\\cite((CRAN)|(BioC)|(BioCAnn))?pkg[*]?\\{([^}]*)\\}", 6L)
+	# \cite{Rpackage:pkgname, ...} - like
+	cite2 <- .parse(l, "\\\\cite[^{ ]*\\{([^}]*)\\}", 2L)
+	if( length(cite2) ){
+		cite2 <- .parse(cite2, '.*Rpackage:([^,}]+).*', 2L)
+		cite <- c(cite, cite2)
+	}
+	
+	rnw_message("Detected package citation(s): ", appendLF=FALSE)
+	if( length(cite) > 0L ){
+		inc <- unique(str_trim(unlist(strsplit(cite, ","))))
+		message(str_out(inc), ' [', length(inc), ']')
 		inc
 	}else
 		message("NONE")
@@ -551,6 +578,7 @@ quick_install <- function(path, ..., lib.loc){
 vignetteMakefile <- function(user=NULL, package=NULL, skip=NULL
 							, print=TRUE, template=NULL, temp=FALSE){
 	
+	library(methods)
 	## create makefile from template
 	# load template makefile
 	if( is.null(template) )
@@ -558,9 +586,11 @@ vignetteMakefile <- function(user=NULL, package=NULL, skip=NULL
 	
 	l <- paste(readLines(template), collapse="\n")
     # Check user: LOCAL_MODE if in declared user
+	localMode <- FALSE
 	if( !is.null(user) ){
 		l <- subMakeVar('USER', str_c(user, collapse=', '), l)
 		if( (cuser <- Sys.info()["user"]) %in% user ){
+			localMode <- TRUE
 			l <- defMakeVar('LOCAL_MODE', cuser, l)
 		}
 	}else{
@@ -573,7 +603,17 @@ vignetteMakefile <- function(user=NULL, package=NULL, skip=NULL
 		if( is(d, 'try-error') ){
 			stop("Could not infer package name: file '", df, "' not found.")
 		}
-		package <- d[1L,'Package']
+		d <- as.list(as.data.frame(d, stringsAsFactors=FALSE))
+		package <- d$Package
+	}else if( length(find.package(package, quiet=TRUE)) ){
+		d <- packageDescription(package)
+	}else{
+		df <- file.path(getwd(), '..', 'DESCRIPTION')
+		d <- try(read.dcf(df), silent=TRUE)
+		if( is(d, 'try-error') ){
+			stop("Could not load DESCRIPTION file '", df, "'.")
+		}
+		d <- as.list(as.data.frame(d, stringsAsFactors=FALSE))
 	}
 	l <- defMakeVar('MAKE_R_PACKAGE', package, l)
 	# Vignettes files:
@@ -592,7 +632,14 @@ vignetteMakefile <- function(user=NULL, package=NULL, skip=NULL
 	if( !is.null(skip) )
 		rnwFiles <- setdiff(rnwFiles, skip)
 	l <- subMakeVar('RNW_SRCS', paste(rnwFiles, collapse=' '), l)
-	
+	# reset pdf objects in local mode to point to ../inst/doc
+	noBuildVignettes <- if( !is.null(d$BuildVignettes) ) tolower(d$BuildVignettes)=='no' else FALSE
+	if( localMode && noBuildVignettes ){
+		l <- defMakeVar('INST_TARGET', 1, l)
+		l <- defMakeVar('PDF_OBJS'
+						, paste(file.path('../inst/doc', sub("\\.Rnw$", ".pdf", rnwFiles)), collapse=' ')
+						, l)
+	}
 	# create makefile
 	mk <- if( temp ) tempfile('vignette_', tmpdir='.', fileext='.mk') else 'vignette.mk'
 	cat(l, file=mk)

@@ -36,8 +36,10 @@ endif
 SRC_DIR=src
 RNW_SRCS = #%RNW_SRCS%#
 PDF_OBJS=$(RNW_SRCS:.Rnw=.pdf)
+# allow redfining pdf targets in local mode
+#%PDF_OBJS%#
 
-TEX_OBJS=$(PDF_OBJS:.pdf=.tex)
+TEX_OBJS=$(RNW_SRCS:.Rnw=.tex)
 
 ifneq (${R_HOME},)
 R_CHECK=1
@@ -83,7 +85,7 @@ TMP_INSTALL_DIR:=tmplib
 endif
 endif
 
-endif
+endif #end not R_CHECK
 
 
 # Define command for temporary installation (used when make is directly called,
@@ -114,15 +116,16 @@ define do_install
 endef	
 endif
 
-#ifdef LOCAL_MODE
-#define update_inst_doc
-#	# Updating PDF files in inst/doc
-#	mv -f *.pdf ../inst/doc
-#endef
-#else
-#define update_inst_doc
-#endef	
-#endif
+#%INST_TARGET%#
+ifdef INST_TARGET
+define update_inst_doc
+	# Moving PDF files to ../inst/doc
+	mv -f $1.pdf ../inst/doc
+endef
+else
+define update_inst_doc
+endef	
+endif
 
 all: init $(PDF_OBJS) do_clean
 	@echo "# All vignettes in 'vignettes' are up to date"
@@ -135,11 +138,21 @@ ifdef LOCAL_MODE
 else
 	# Mode: Production
 endif
-	# Detected vignettes: $(PDF_OBJS)
+ifneq ($(R_CHECK),0)
+	# R CMD check: TRUE
+else
+	# R CMD check: FALSE
+endif
+ifdef INST_TARGET
+	# BuildVignettes: no (storing in ../inst/doc) 
+endif
+	# Detected vignettes: $(RNW_SRCS)
+	# Detected targets: $(PDF_OBJS)
 
 clean:
 	rm -fr *.bbl *.run.xml *.blg *.aux *.out *-blx.bib \
-	*.log *.err Rplots.pdf tests-results tmplib vignette_*.mk vignette.mk 
+	*.log *.err Rplots.pdf tests-results tmplib vignette_*.mk vignette.mk \
+	cleveref.sty 
 ifndef LOCAL_MODE
 	rm -f $(TEX_OBJS)
 endif
@@ -163,20 +176,29 @@ ifndef QUICK
 endif
 
 # Generate .pdf from .Rnw
+ifdef INST_TARGET
+../inst/doc/%.pdf: ${SRC_DIR}/%.Rnw
+else
 %.pdf: ${SRC_DIR}/%.Rnw
+endif
 	$(do_install)
 	# Generating vignette $@ from ${SRC_DIR}/$*.Rnw
 	# Using R_LIBS: $(R_LIBS)
+	# Compiling ${SRC_DIR}/$*.Rnw into $*.tex
 	$(RSCRIPT) --vanilla -e "pkgmaker::rnw('${SRC_DIR}/$*.Rnw', '$*.tex');"
 		
 	# Generating pdf $@ from $*.tex
 ifdef MAKEPDF
 ifdef USE_PDFLATEX
-	$(eval VIGNETTE_BASENAME := $(shell basename $@ .pdf))
+	$(eval VIGNETTE_BASENAME := $*)
 	# Using pdflatex
+	# LaTeX compilation 1/3
 	@pdflatex $(VIGNETTE_BASENAME) >> $(VIGNETTE_BASENAME)-pdflatex.log
+	# Compiling bibliography with bibtex
 	-bibtex $(VIGNETTE_BASENAME)
+	# LaTeX compilation 2/3
 	@pdflatex $(VIGNETTE_BASENAME) >> $(VIGNETTE_BASENAME)-pdflatex.log
+	# LaTeX compilation 3/3
 	@pdflatex $(VIGNETTE_BASENAME) >> $(VIGNETTE_BASENAME)-pdflatex.log
 ifndef QUICK
 	# Compact vignettes
@@ -189,25 +211,35 @@ endif
 	
 else
 	# Using tools::texi2dvi
+	# LaTeX compilation 1/2
 	$(RSCRIPT) --vanilla -e "tools::texi2dvi( '$*.tex', pdf = TRUE, clean = FALSE )"
+	# Compiling bibliography with bibtex
 	-bibtex $*
+	# LaTeX compilation 2/2
 	$(RSCRIPT) --vanilla -e "tools::texi2dvi( '$*.tex', pdf = TRUE, clean = TRUE )"
 endif
 endif	
 	# Update fake vignette file ./$*.Rnw
 	$(RSCRIPT) --vanilla -e "pkgmaker::makeFakeVignette('${SRC_DIR}/$*.Rnw', '$*.Rnw')"
-	$(update_inst_doc)
+	$(call update_inst_doc, $*)
 
 # only run tests if not checking: CRAN check run the tests separately
+ifdef INST_TARGET
+../inst/doc/%-unitTests.pdf:
+else
 %-unitTests.pdf:
+endif
 	$(do_install)
 	# Generating vignette for unit tests: $@
 	# Using R_LIBS: $(R_LIBS)
-	# Make test vignette
 	$(RSCRIPT) --vanilla -e "pkgmaker::makeUnitVignette('package:$(MAKE_R_PACKAGE)', check=$(R_CHECK))" >> unitTests.log
 ifdef LOCAL_MODE
 	$(eval VIGNETTE_BASENAME := $(shell basename $@ .pdf))
 	# Compact vignette file
 	$(RSCRIPT) --vanilla -e "tools::compactPDF('$(VIGNETTE_BASENAME).pdf')"
 endif
-	$(update_inst_doc)
+	$(call update_inst_doc, $*-unitTests)
+	
+update_doc:
+	$(call update_inst_doc, *)
+
