@@ -1,4 +1,4 @@
-2e5347eaf632e4a613087f3e2ee9956f *DESCRIPTION
+d37f5f038ff44d672e0209ee2089f781 *DESCRIPTION
 d4209f609a3c62b2241b50bd61bae8fe *NAMESPACE
 c60fcff48ce6c7867041a1039297f2f7 *R/bibtex.R
 2cd4aabaf8810b9dacf0996b5c36b4fb *R/colors.R
@@ -12,14 +12,15 @@ d4ee6236afd30819c3c6d64d32ada527 *R/files.R
 fa76c05e9b603e314c810723ebca2bc7 *R/options.R
 315869f3d4e7f04e404bfbdd812a416e *R/package-extra.R
 6bd7a8a214c6596f255b882356b3ef34 *R/package.R
-67d93f8d7ea40a9406f474e0049ce96a *R/packages.R
-ddbaf056581024dd69ca693889b484fc *R/registry.R
+13fca52c8120bea276225b9861db152f *R/packages.R
+28308ea9ab90c2db7fda2ad326e012fd *R/rd.R
+3cadfb39db2ec78f03d44594c50e93ae *R/registry.R
 e6432b5e25f3565f3d73bad43f694008 *R/unitTests.R
-8c1e2bc35a062c8b997b3582d017310e *R/utils.R
+475627ecbf0733bd767f38f6c1a92dfb *R/utils.R
 f3999aaba5bd0b8f7b26fa67e45bc174 *R/vignette.R
 06c0d8412c1d103e52fab4766d1b4b73 *inst/cleveref.sty
-b084073a2c60908bb718385304d21179 *inst/doc/pkgmaker-unitTests.Rnw
-9995260fa3dc4210a733be675e5b0d75 *inst/doc/pkgmaker-unitTests.pdf
+33e7a762d5af40f020e23e89f2873d7c *inst/doc/pkgmaker-unitTests.Rnw
+8090e0590ecc536c7ea3d322675c8f8e *inst/doc/pkgmaker-unitTests.pdf
 a465f35ad3f3bc8d6ff11563fd3cf7f3 *inst/tests/runit.options.r
 a7f5a8ce656d15491cb92fa7415161d8 *inst/tests/runit.utils.r
 418d2d850319b5254f53c2434dcb3c3b *inst/vignette.mk
@@ -46,7 +47,7 @@ fa3aee3d3e70d315b30651e67b3d73cc *man/graphics-utils.Rd
 463de3039d4fffb39a4ba775878464ff *man/hasArg2.Rd
 8c3034562912022f07bc4b336fbfcf21 *man/inSweave.Rd
 790a31fdfbfbbda8712c0695c7b75278 *man/install.dependencies.Rd
-a2a9b314d05ac082340b209286ad3516 *man/isCRANcheck.Rd
+86457ae37e4e04d02840b74b5c0d4552 *man/isCRANcheck.Rd
 23b81c677cc3b794c0728480be51304c *man/is_something.Rd
 572cf1946c58844f94f7455351a1f631 *man/latex.Rd
 f4b6b56453a21d375a990abae30e560f *man/libutils.Rd
@@ -91,4 +92,4 @@ fa055a1719135a6e4659180cb3fa818c *man/utestPath.Rd
 02d46745a8fb4ef21cf4d0d1ceb63515 *man/writeUnitVignette.Rd
 c04719a035b4d15f507a6c51e94d4e0b *tests/doRUnit.R
 943651ef0b572855c1e8817c39c3eb05 *vignettes/Makefile
-b084073a2c60908bb718385304d21179 *vignettes/pkgmaker-unitTests.Rnw
+33e7a762d5af40f020e23e89f2873d7c *vignettes/pkgmaker-unitTests.Rnw
