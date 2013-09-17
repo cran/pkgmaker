@@ -132,10 +132,39 @@ parse_deps <- function (string)
 	pieces[pieces != "R"]
 }
 
-packageDependencies <- function(x, recursive=FALSE){
-	x <- as.package(x)
+#' List Package Dependencies
+#' 
+#' @param x path to package source directory or file.
+#' @param all logical that indicates if all dependencies should be returned,
+#' or only the required ones.
+#' @param as.list logical that indicates if the result should be a list with one element
+#' per type of dependency.
+#' @param available a matrix of available packages (as returned by \code{\link{available.packages}}), 
+#' from which the dependencies are retrieved.
+#' This means that there must be a row for the package \code{x}.
+#'  
+#' @export
+#' 
+packageDependencies <- function(x, all = TRUE, as.list = FALSE, available = NULL){
+    
+    if( is.null(available) ) x <- as.package(x, extract = TRUE)
+    else{
+        p <- available[, 'Package']
+        if( !x %in% p ) return(NA)
+        x <- available[p == x, , drop = FALSE][1L, ]
+        names(x) <- tolower(names(x))
+    }
+    
 	d <- lapply(x[c('depends', 'imports', 'linkingto', 'suggests')], parse_deps)
-	unlist(d)
+	d <- unlist(d)
+    d <- d[!is.na(d)]
+    if( !length(d) ) return()
+    names(d) <- gsub("[0-9]+$", "", names(d))
+    
+    # remove non-required
+    if( !all ) d <- d[!names(d) %in% c('suggests')]    
+    if( as.list ) d <- split(unname(d), names(d))
+    d
 }
 
 .biocLite <- function(...){
@@ -339,15 +368,17 @@ add_lib <- function(..., append=FALSE){
 
 #' Package Check Utils
 #' 
-#' \code{isCRANcheck} tries to identify if one is running CRAN checks.
+#' \code{isCRANcheck} \strong{tries} to identify if one is running CRAN-like checks.
 #' 
 #' Currently \code{isCRANcheck} returns \code{TRUE} if the check is run with 
 #' either environment variable \code{_R_CHECK_TIMINGS_} (as set by flag \code{'--timings'})
 #' or \code{_R_CHECK_CRAN_INCOMINGS_} (as set by flag \code{'--as-cran'}).
 #' 
-#' Note that the checks performed on CRAN farms are not always run with such flags, 
-#' so there is no guarantee this function identifies such runs, and one should 
-#' rely custom environment variables to enable specific tests or examples.
+#' \strong{Warning:} the checks performed on CRAN check machines are on purpose not always 
+#' run with such flags, so that users cannot effectively "trick" the checks.
+#' As a result, there is no guarantee this function effectively identifies such checks.
+#' If really needed for honest reasons, CRAN recommends users rely on custom dedicated environment 
+#' variables to enable specific tests or examples.
 #' 
 #' @param ... each argument specifies a set of tests to do using an AND operator.
 #' The final result tests if any of the test set is true.
@@ -390,19 +421,25 @@ isCRANcheck <- function(...){
 #' @rdname isCRANcheck
 isCRAN_timing <- function() isCRANcheck('timing')
 
-#' \code{isCHECK} tries harder to test if running under \code{R CMD check}, at least  
-#' for unit tests that use the unified unit test framework defined by \pkg{pkgmaker} 
-#' (see \code{\link{utest}}).
+#' \code{isCHECK} tries harder to test if running under \code{R CMD check}.
+#' It will definitely identifies check runs for: 
+#' \itemize{
+#' \item unit tests that use the unified unit test framework defined by \pkg{pkgmaker} (see \code{\link{utest}});
+#' \item examples that are run with option \code{R_CHECK_RUNNING_EXAMPLES_ = TRUE}, 
+#' which is automatically set for man pages generated with a fork of \pkg{roxygen2} (see \emph{References}).
+#' }
 #' 
-#' \code{isCHECK} checks both CRAN expected flags and the value of environment variable
-#' \code{_R_CHECK_RUNNING_UTESTS_}.
-#' It will return \code{TRUE} if such variable is set to anything not equivalent 
-#' to \code{FALSE}.
+#' Currently, \code{isCHECK} checks both CRAN expected flags, the value of environment variable
+#' \code{_R_CHECK_RUNNING_UTESTS_}, and the value of option \code{R_CHECK_RUNNING_EXAMPLES_}.
+#' It will return \code{TRUE} if any of these environment variables is set to 
+#' anything not equivalent to \code{FALSE}, or if the option is \code{TRUE}.
 #' For example, the function \code{\link{utest}} sets it to the name of the package  
 #' being checked (\code{_R_CHECK_RUNNING_UTESTS_=<pkgname>}), 
 #' but unit tests run as part of unit tests vignettes are run with 
-#' \code{_R_CHECK_RUNNING_UTESTS_=FALSE}, so that developers cann run all tests.
+#' \code{_R_CHECK_RUNNING_UTESTS_=FALSE}, so that all tests are run and reported when 
+#' generating them.
 #' 
+#' @references \url{https://github.com/renozao/roxygen2}
 #' @rdname isCRANcheck
 #' @export
 #' 
@@ -444,7 +481,7 @@ isCHECK <- function(){
 #' Sys.unsetenv('TOTO')
 #' 
 Sys.getenv_value <- function(name, raw = FALSE){
-    val <- setNames(Sys.getenv()[name], NULL)
+    val <- Sys.getenv(name, unset = NA, names = FALSE)
     if( raw ) return(val)
     # convert false values to FALSE if required
     if( is.na(val) || !nchar(val) || identical(tolower(val), 'false') || val == '0' ){
