@@ -32,7 +32,18 @@
   envir=parent.frame())}.
 }
 \examples{
+\dontshow{# roxygen generated flag
+options(R_CHECK_RUNNING_EXAMPLES_=TRUE)
+}
+
+#----------
+# packageData
+#----------
 \dontrun{ mydata <- packageData('mydata') }
+
+#----------
+# ldata
+#----------
 \dontrun{
 # in a package' source => won't issue a NOTE
 myfunction function(){

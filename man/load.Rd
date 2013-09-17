@@ -25,12 +25,23 @@
   Default Load/Unload Functions
 }
 \examples{
+\dontshow{# roxygen generated flag
+options(R_CHECK_RUNNING_EXAMPLES_=TRUE)
+}
+
+#----------
+# onLoad
+#----------
 # in a package namespace:
 .onLoad <- function(libname=NULL, pkgname){
 
 	pkgmaker::onLoad(libname, pkgname)
 
 }
+
+#----------
+# onUnload
+#----------
 # in a package namespace:
 .onUnload <- function(libpath){
 
