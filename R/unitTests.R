@@ -47,6 +47,12 @@ requireRUnit <- local({
 	
 })
 
+
+# Borrowed from RUnit::.existsTestLogger
+.existsTestLogger <- function(envir = .GlobalEnv){
+    exists(".testLogger", envir = envir) && inherits(.testLogger, "TestLogger")
+}
+
 #' Enhancing RUnit Logger
 #' 
 #' Adds a function or a local variable to RUnit global logger.
@@ -70,7 +76,7 @@ addToLogger <- function(name, value, logger=NULL){
 	logobj <- 
 		if( !is.null(logger) ) logger
 		else{
-			if( !RUnit:::.existsTestLogger() )
+			if( !.existsTestLogger() )
 				stop("No global logger exists")
 			
 			get('.testLogger', envir=.GlobalEnv)
@@ -115,7 +121,7 @@ checkPlot <- function(expr, msg=NULL, width=1000, height=NULL){
 	# get stuff from RUnit
 	uf <- requireRUnit()
 	if( is.null(uf) || uf != 'RUnit' ) return(TRUE)
-	.existsTestLogger <- RUnit:::.existsTestLogger	
+	#.existsTestLogger <- RUnit:::.existsTestLogger	
 	.testLogger <- if( .existsTestLogger() ) .GlobalEnv$.testLogger
 	
 	if (missing(expr)) {
@@ -221,7 +227,10 @@ if( FALSE ){
 #' optionally follows an expected regular expression pattern.
 #' 
 #' @param expr an R expression
-#' @param expected expected value or regular expression pattern
+#' @param expected expected value as regular expression pattern.
+#' If a logical, then it specifies if a warning is expected or not.
+#' 
+#' For backward compatibility, a \code{NULL} value is equivalent to \code{TRUE}.
 #' @param msg informative message to add to the error in case of failure
 #' 
 #' @export
@@ -235,11 +244,11 @@ if( FALSE ){
 #' try( checkWarning(3) )
 #' try( checkWarning({ warning('ah ah'); 3}, 'warn you') )
 #' 
-checkWarning <- function(expr, expected=NULL, msg=NULL){
+checkWarning <- function(expr, expected=TRUE, msg=NULL){
 	
 	# get stuff from RUnit
 	uf <- requireRUnit()
-	.existsTestLogger <- RUnit:::.existsTestLogger	
+	#.existsTestLogger <- RUnit:::.existsTestLogger	
 	.testLogger <- if( .existsTestLogger() ) .GlobalEnv$.testLogger
 	
 	if (missing(expr)) {
@@ -264,14 +273,22 @@ checkWarning <- function(expr, expected=NULL, msg=NULL){
 	
 	# check that some warning was thrown
 	if( length(warns) == 0L ){
+        if( isFALSE(expected) ) return( TRUE )
 		if (.existsTestLogger()) {
 			.testLogger$setFailure()
 		}
 		stop("Warning not generated as expected\n", msg)
 	}
-	
+	if( isFALSE(expected) ){
+        if (.existsTestLogger()) {
+			.testLogger$setFailure()
+		}
+		stop("Warning generated while none was expected:\n"
+            , "  - Warning(s): ", if(length(warns)>1)"\n    * ",  str_out(warns, Inf, sep="\n    * ") ,"\n"
+            , msg)
+    }
 	# check warnings
-	if( is.null(expected) ) return(TRUE)
+	if( is.null(expected) || isTRUE(expected) ) return(TRUE)
 	if( any(grepl(expected, warns)) ) return(TRUE)
 	
 	# throw error
@@ -279,7 +296,7 @@ checkWarning <- function(expr, expected=NULL, msg=NULL){
 		.testLogger$setFailure()
 	}
 	stop("Warning does not match expected pattern:\n"
-		, "  - Warning(s): ", if(length(warns)>1)"\n    * ",  str_out(warns, sep="\n    * ") ,"\n"
+		, "  - Warning(s): ", if(length(warns)>1)"\n    * ",  str_out(warns, Inf, sep="\n    * ") ,"\n"
 		, "  - Pattern: '", expected,"'\n"
 		, msg)
 	
@@ -369,14 +386,14 @@ writeUnitVignette <- function(pkg, file, results=NULL, check=FALSE){
 	Rnw.template <- 
 "
 \\documentclass[10pt]{article}
+%\\VignetteDepends{knitr}
 %\\VignetteIndexEntry{@pkg@-unitTests}
+%\\VignetteCompiler{knitr}
+%\\VignetteEngine{knitr::knitr}
 \\usepackage{vmargin}
 \\setmargrb{0.75in}{0.75in}{0.75in}{0.75in}
 
-\\RequirePackage{ae,mathpple}    % ae as a default font pkg works with Sweave
-\\RequirePackage[T1]{fontenc}
-
-<<echo=FALSE,print=FALSE>>=
+<<setup, include=FALSE>>=
 pkg <- '@pkg@'
 require( pkg, character.only=TRUE )
 prettyVersion <- packageDescription(pkg)$Version
@@ -686,7 +703,7 @@ setMethod('utest', 'character',
 			cat("#########################\n")
 			
 			# define environment variable that identifies a test run (if not already defined) 
-			if( is.na(utestCheckMode()) ){
+			if( is.na(utestCheckMode(raw = TRUE)) ){
 				oldUM <- utestCheckMode(TRUE)
 				on.exit( utestCheckMode(oldUM), add=TRUE)
 			}

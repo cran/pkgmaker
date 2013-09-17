@@ -4,6 +4,9 @@
 # Creation: 25 Apr 2012
 ###############################################################################
 
+#' @include packages.R
+NULL
+
 rnw_message <- function(...) message("# ", ...)
 
 #' Identifying Sweave Run
@@ -50,6 +53,10 @@ makeFakeVignette <- function(src, out, PACKAGE=NULL){
 	if( !is.null(PACKAGE) ){
 		src <- str_c(, src)
 	}
+    if( identical(normalizePath(dirname(src)), normalizePath(dirname(out))) ){
+        cat("# NOTE: skipped fake vignette [source in root directory]\n")
+        return(invisible())
+    }
 	# read in template file
 	l <- readLines(src)
 	# extract %\Vignette commands
@@ -195,13 +202,29 @@ latex_preamble <- function(PACKAGE, R=TRUE, CRAN=TRUE, Bioconductor=TRUE
 #' 
 latex_bibliography <- function(PACKAGE, file=''){
 	
+    rpkg.bib <- "%\\bibliography{Rpackages}\n"
+    cmd <- rpkg.bib
 	# get REFERENCES.bib file
 	reffile <- packageReferenceFile(PACKAGE=PACKAGE)
-	if( !is.file(reffile) ) return(invisible())
+    if( is.file(reffile) ){
+        cmd <- paste0(cmd, "\\bibliography{", gsub("\\.bib$", "", reffile), "}\n")
+    }
 	
-	cmd <- paste("\\bibliography{", gsub("\\.bib$", "", reffile), "}\n", sep='')
-	if( !is.null(file) ) cat(cmd, file=file)
-	else cmd
+    # add post-processing knit hook
+    library(knitr)
+    knit_hooks$set(document = function(x){
+        # write bibfile if necessary
+        if( length(pkgs <- parsePackageCitation(x)) ){
+            # write bibfile
+            write.pkgbib(gsub("^Rpackage:", '', pkgs), file='Rpackages.bib', prefix='Rpackage:')
+            # uncomment inclusion line
+            x <- gsub("%\\bibliography{Rpackages}", "\\bibliography{Rpackages}", x, fixed = TRUE)
+        }
+        x
+    })
+
+    if( !is.null(file) ) cat(cmd, file=file)
+    else cmd
 }
 
 #' @importFrom methods is
@@ -292,7 +315,7 @@ runVignette.rnw_sweave <- function(x, file=NULL, ...){
 #' @export
 rnw <- function(x, file=NULL, ..., raw=FALSE){
 	
-	library(methods)
+#	library(methods)
 	# load rnw file
 	x <- as.rnw(x, ...)	
 	
@@ -316,7 +339,7 @@ rnw <- function(x, file=NULL, ..., raw=FALSE){
 	# Package citations
 	if( !is.null(keys <- x$cite) ){
 		message("# Writing package bibtex file [", length(keys)," key(s)] ... ", appendLF=FALSE)
-		write.bib(keys, file='Rpackages.bib', prefix='Rpackage:', verbose=FALSE)
+		write.pkgbib(keys, file='Rpackages.bib', prefix='Rpackage:', verbose=FALSE)
 		message('OK')
 	}
 	#
@@ -507,6 +530,69 @@ rnwChildren <- function(x){
 	
 }  
 
+#' Formatting Package Citations in Sweave/knitr Documents
+#' 
+#' @param x output document, as a single string.
+#' @export
+parsePackageCitation <- function(x){
+    
+    if( length(x) > 1L ) x <- paste(x, collapse = "\n")
+    
+    .parse <- function(x, pattern, idx){
+		dr <- str_match_all(x, pattern)
+		dr <- dr[sapply(dr, length)>0L]
+		unlist(lapply(dr, '[', , idx))
+	}
+	
+	# extract package citations: \citeCRANpkg - like
+    x <- gsub(".*[^%]* *\\\\begin\\{document\\}(.*)", "\\1", x)
+    cite <- .parse(x, "\\\\cite((CRAN)|(BioC)|(BioCAnn))?pkg[*]?\\{([^}]*)\\}", 6L)
+    # \cite{Rpackage:pkgname, ...} - like
+	cite2 <- .parse(x, "\\\\cite[^{ ]*\\{([^}]*)\\}", 2L)
+    if( length(cite2) ){
+ 		cite2 <- .parse(cite2, '.*Rpackage:([^,}]+).*', 2L)
+		cite <- c(cite, cite2)
+	}
+	# remove Rpackage prefix
+	if( length(cite) ){
+        cite <- unlist(strsplit(cite, ","))
+        cite <- gsub('^Rpackage:', '', cite)
+	}
+	
+    inc <- character()
+	if( length(cite) > 0L ){
+		inc <- unique(str_trim(unlist(strsplit(cite, ","))))
+    }
+	inc  
+}
+
+#' \code{bibcite} provides an inline package citation functionnality. 
+#' Technically it adds a given Bibtex key to a cache that is used at the end of the 
+#' document processing to generate a .bib file with all citation keys.  
+#' 
+#' @param key citation Bibtex key(s) as a character vector
+#' @param cache specifies what to do with the previsouly chached keys.
+#' If \code{TRUE}, then \code{key} is added to the cache. 
+#' If \code{NULL}, then all previously cached keys are deleted, before .
+#' If a character string, then it specifies the path to a Bibtex file that is loaded 
+#' to initialise the cache.
+#' @param ... extra arguments passed to \code{\link[bibtex]{read.bib}}.
+#' @keywords internal
+cite_pkg <- local({
+    .keys <- character()
+    function(key, cache = NA, ...){
+        # return whole cache
+        if( !nargs() ) return(.keys)
+        # reset cache
+        if( is.null(cache) ) .keys <- character()
+        else if( isString(cache) ) .keys <- read.bib(file = cache, ...)
+        if( !missing(key) ){
+            cat(key)
+            .keys <<- c(.keys, key)
+        }
+    }
+})
+
 rnwCite <- function(x){
 	
 	x <- rnwObject(x)
@@ -515,7 +601,7 @@ rnwCite <- function(x){
 	l <- readLines(x$file)
 
 	.parse <- function(x, pattern, idx){
-		dr <- str_match_all(l, pattern)
+		dr <- str_match_all(x, pattern)
 		dr <- dr[sapply(dr, length)>0L]
 		unlist(lapply(dr, '[', , idx))
 	}
@@ -565,6 +651,9 @@ quick_install <- function(path, ..., lib.loc){
 	
 }
 
+
+vignetteCheckMode <- checkMode_function('_R_CHECK_BUILDING_VIGNETTES_')
+
 #' \code{vignetteMakefile} returns the path to a generic makefile used to make 
 #' vignettes.
 #' 
@@ -594,10 +683,10 @@ quick_install <- function(path, ..., lib.loc){
 #' @rdname vignette
 #' @export
 vignetteMakefile <- function(package=NULL, skip=NULL, print=TRUE, template=NULL, temp=FALSE
-                             , checkMode = isCRANcheck()
+                             , checkMode = isCHECK() || vignetteCheckMode()
                              , user = NULL, tests=TRUE){
 	
-	library(methods)
+#	library(methods)
 	## create makefile from template
 	# load template makefile
 	if( is.null(template) )
@@ -608,6 +697,10 @@ vignetteMakefile <- function(package=NULL, skip=NULL, print=TRUE, template=NULL,
 	l <- subMakeVar('R_BIN', R.home('bin'), l)
   #
   
+    if( checkMode ){
+        oldCM <- vignetteCheckMode(TRUE)
+        on.exit( vignetteCheckMode(oldCM) )
+    }
   # Check user: LOCAL_MODE if in declared user
 	localMode <- !checkMode
 	cuser <- Sys.info()["user"]
@@ -627,25 +720,20 @@ vignetteMakefile <- function(package=NULL, skip=NULL, print=TRUE, template=NULL,
   }
   
 	# Package name
-	if( is.null(package) ){
-		df <- file.path(getwd(), '..', 'DESCRIPTION')
-		d <- try(read.dcf(df), silent=TRUE)
-		if( is(d, 'try-error') ){
-			stop("Could not infer package name: file '", df, "' not found.")
-		}
-		d <- as.list(as.data.frame(d, stringsAsFactors=FALSE))
-		package <- d$Package
-	}else if( length(find.package(package, quiet=TRUE)) ){
+    pkg_dir <-  dirname(getwd())
+    loc_package <- if( is.file(df <- file.path(pkg_dir, 'DESCRIPTION')) ){
+        d <- try(read.dcf(df), silent=TRUE)
+        d <- as.list(as.data.frame(d, stringsAsFactors=FALSE))
+        d$Package
+    }
+    if( !is.null(loc_package) && (is.null(package) || identical(loc_package, package)) ) package <- loc_package
+    else if( !identical(loc_package, package) && length(pkg_dir <- find.package(package, quiet=TRUE)) ){
 		d <- packageDescription(package)
 	}else{
-		df <- file.path(getwd(), '..', 'DESCRIPTION')
-		d <- try(read.dcf(df), silent=TRUE)
-		if( is(d, 'try-error') ){
-			stop("Could not load DESCRIPTION file '", df, "'.")
-		}
-		d <- as.list(as.data.frame(d, stringsAsFactors=FALSE))
+		stop("Could not load DESCRIPTION file for package '", package, "'.")		
 	}
 	l <- defMakeVar('MAKE_R_PACKAGE', package, l)
+    l <- subMakeVar('R_PACKAGE_DESCRIPTION', pkg_dir, l)
   # R_LIBS: add package's dev lib if necessary 
   Rlibs <- NULL
   if( localMode && is.dir(devlib <- file.path(getwd(), '..', '..', 'lib')) ){
@@ -675,11 +763,15 @@ vignetteMakefile <- function(package=NULL, skip=NULL, print=TRUE, template=NULL,
 	# reset pdf objects in local mode to point to ../inst/doc
 	noBuildVignettes <- if( !is.null(d$BuildVignettes) ) tolower(d$BuildVignettes)=='no' else FALSE
 	if( localMode && noBuildVignettes ){
-		l <- defMakeVar('INST_TARGET', 1, l)
-		l <- defMakeVar('PDF_OBJS'
+        l <- defMakeVar('INST_TARGET', 1, l)
+    	l <- defMakeVar('PDF_OBJS'
 						, paste(file.path('../inst/doc', sub("\\.Rnw$", ".pdf", rnwFiles)), collapse=' ')
 						, l)
 	}
+    l <- defMakeVar('PDF_OBJS'
+            , paste(file.path('../inst/doc', sub("\\.Rnw$", ".pdf", rnwFiles)), collapse=' ')
+            , l)
+    
 	# create makefile
 	mk <- if( temp ) tempfile('vignette_', tmpdir='.', fileext='.mk') else 'vignette.mk'
 	cat(l, file=mk)
@@ -716,3 +808,97 @@ compactVignettes <- function(paths, ...){
 	}
 	
 }
+
+#' Knitr Extensions
+#' 
+#' \code{knit_ex} is a utility function for running small knitr examples, 
+#' e.g., to illustrate functionnalities or issues. 
+#' 
+#' @param x text to knit as a character vector
+#' @param ... arguments passed to \code{\link[knitr]{knit2html}} or \code{\link[knitr]{knit}}
+#' @param quiet logical that indicates if knitting should be quiet (no progress bars etc..).
+#' 
+#' @export
+#' @examples
+#' 
+#' library(knitr)
+#' knit_ex("1 + 1")
+#' 
+knit_ex <- function(x, ..., quiet = TRUE){
+    
+    library(knitr)
+    hk <- knit_hooks$get()
+    saveRDS(hk, 'knit_hooks.rds')
+    if( !(html_chunks <- any(grepl("```{", x, fixed = TRUE))) ){
+        if( all(!grepl(">>=", x, fixed = TRUE)) ){
+            x <- c("```{r}", x, "```")
+            html_chunks <- TRUE   
+        }
+    }
+    x <- paste0(x, collapse = "\n")
+    if( any(html_chunks) ){
+        res <- knit2html(text = x, ..., fragment.only = TRUE, quiet = quiet)
+    }else{
+        res <- knit(text = x, ..., quiet = quiet)
+    }
+    cat(res)
+}
+
+try_message <- function(expr){
+    tryCatch(expr, error = function(e){ message(e); invisible()})
+}
+
+#' \code{hook_try} is a knitr hook to enable showing error 
+#' messages thrown by \code{\link{try}}.
+#' The function is not meant to be called directly, but only registered 
+#' using \code{\link{knit_hooks}} (see details on this dedicated man page).
+#' 
+#' \code{hook_try} simply defines a function \code{try} in \code{envir} that prints 
+#' the error message if any, and is called instead of base \code{\link{try}}. 
+#' 
+#' @param before logical that indicates when the hook is being called: 
+#' before or after the chunk is processed.
+#' @param options list of current knitr chunk options 
+#' @param envir environment where the chunk is evaluated
+#' 
+#' @rdname knit_ex
+#' @export
+#' @examples
+#' 
+#' library(knitr)
+#' 
+#' # standard error message is caught
+#' knit_ex("stop('ah ah')")
+#' 
+#' # with try the error is output on stderr but not caughted by knitr
+#' knit_ex("try( stop('ah ah') )")
+#' 
+#' # no message caught
+#' knit_ex("
+#' ```{r, include = FALSE}
+#' knit_hooks$set(try = pkgmaker::hook_try)
+#' ```
+#' 
+#' ```{r, try=TRUE}
+#' try( stop('ah ah') )
+#' ```")
+#' 
+hook_try <- local({
+    .try_defined <- FALSE
+    function(before, options, envir){
+    
+        # remove hacked version of try
+        if( !before ){
+            if( .try_defined ) remove('try', envir = envir)
+            .try_defined <<- FALSE
+            return(invisible())
+        }
+        if( isTRUE(options$try) ){
+            # define hacked version of try()
+            .try <- try_message
+            environment(.try) <- envir
+            envir$try <- .try
+            .try_defined <<- TRUE
+        }
+    }
+})

@@ -67,18 +67,26 @@ packageMakefile <- function(package=NULL, template=NULL, temp = FALSE, print = T
 	
 	capture.output(suppressMessages({
 		library(pkgmaker)
-		library(methods)
+#		library(methods)
 		library(devtools)					
 	}))
-	defMakeVar <- pkgmaker:::defMakeVar
-	subMakeVar <- pkgmaker:::subMakeVar
+#	defMakeVar <- pkgmaker::defMakeVar
+#	subMakeVar <- pkgmaker::subMakeVar
 	
 	project_path <- getwd()
 	project_name <- basename(project_path)
-	if( is.null(package) ){
-		pdir <- file.path(c('pkg', '.'), 'DESCRIPTION')
-		if( !length(sd <- which(is.file(pdir))) )
+	subproject_path_part <- ''
+	if( is.null(package) || isString(package) ){
+		if( isString(package) && !nzchar(package) ) package <- NULL
+		lookup_dir <- c('pkg', '.')
+		if( !is.null(package) ){
+			lookup_dir <- c(lookup_dir, file.path('pkg', package))
+			subproject_path_part <- file.path(package, '')
+		}
+		pdir <- file.path(lookup_dir, 'DESCRIPTION')
+		if( !length(sd <- which(is.file(pdir))) ){
 			stop("Could not detect package source directory")
+		}
 		package <- pdir[sd[1L]]
 	}
 	package <- normalizePath(package)
@@ -102,6 +110,7 @@ packageMakefile <- function(package=NULL, template=NULL, temp = FALSE, print = T
 	l <- defMakeVar('R_PACKAGE_PROJECT', project_name, l)
 	# R_PACKAGE_PROJECT_PATH
 	l <- defMakeVar('R_PACKAGE_PROJECT_PATH', project_path, l)
+	l <- defMakeVar('R_PACKAGE_SUBPROJECT_PATH_PART', subproject_path_part, l)
 	# R_BIN
 	l <- subMakeVar('R_BIN', R.home('bin'), l)
 	# R_PACKAGE_TAR_GZ
@@ -110,6 +119,17 @@ packageMakefile <- function(package=NULL, template=NULL, temp = FALSE, print = T
 	# R_PACKAGE_TYPE	
 	l <- defMakeVar('R_PACKAGE_OS', R_OS(), l)
 	#
+
+    # auto-conf variables
+    init_var <- list(version = pkg$version)
+    if( is.dir(file.path(package_dir, 'vignettes')) ) 
+        init_var <- c(init_var, has_vignettes=TRUE)
+    # dump variables
+    if( length(init_var) ){
+        init_var <- setNames(init_var, paste0('R_PACKAGE_', toupper(names(init_var))))
+        init_var_str <- str_out(init_var, Inf, use.names = TRUE, sep = "\n")
+        l <- subMakeVar('INIT_CHECKS', init_var_str, l)
+    }
 	
 	# R_CMD_CHECK
 	rlibs <- NULL

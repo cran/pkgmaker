@@ -84,7 +84,10 @@ quickinstall <- function(path, destdir=NULL, vignettes=FALSE, force=TRUE, ..., l
 	# build
 	message("# Building package `", pkg$package, "` in '", getwd(), "'")
 	opts <- '--no-manual --no-resave-data '
-	if( !vignettes ) opts <- str_c(opts, '--no-vignettes ')
+	if( !vignettes ){
+        vflag <- if( testRversion('>= 3.0') ) '--no-build-vignettes ' else '--no-vignettes ' 
+        opts <- str_c(opts, vflag)
+    }
 	R.CMD('build', opts, path.protect(npath), ...)
 	spkg <- paste(pkg$package, '_', pkg$version, '.tar.gz', sep='')
 	if( !file.exists(spkg) ) stop('Error in building package `', pkg$package,'`')
@@ -135,6 +138,16 @@ packageDependencies <- function(x, recursive=FALSE){
 	unlist(d)
 }
 
+.biocLite <- function(...){
+	# install BiocInstaller if necessary
+	if( !require.quiet('BiocInstaller') ){
+		message("Installing biocLite")
+		source('http://www.bioconductor.org/biocLite.R')
+	}
+	f <- get('biocLite', 'package:BiocInstaller')
+	f(...)
+}
+
 #' Installing All Package Dependencies
 #' 
 #' Install all dependencies from a package source directory or 
@@ -158,7 +171,6 @@ packageDependencies <- function(x, recursive=FALSE){
 install.dependencies <- function (pkg = NULL, all=FALSE, ..., dryrun=FALSE) 
 {
 	pkg <- as.package(pkg, extract=TRUE)
-	#parse_deps <- devtools:::parse_deps
 	deps <- c(parse_deps(pkg$depends)
 			, parse_deps(pkg$imports) 
 			, parse_deps(pkg$linkingto)
@@ -172,7 +184,9 @@ install.dependencies <- function (pkg = NULL, all=FALSE, ..., dryrun=FALSE)
 	}
 	message("Missing: ", str_out(deps, Inf))
 	message("Installing ", length(deps), " dependencies for ", pkg$package)
-	if( !dryrun ) install.packages(deps, ...)
+	if( !dryrun ){
+		.biocLite(deps, ...)
+	}
 	invisible(deps)
 }
 
@@ -376,8 +390,6 @@ isCRANcheck <- function(...){
 #' @rdname isCRANcheck
 isCRAN_timing <- function() isCRANcheck('timing')
 
-.utestCheckEnvarname <- '_R_CHECK_RUNNING_UTESTS_'
-
 #' \code{isCHECK} tries harder to test if running under \code{R CMD check}, at least  
 #' for unit tests that use the unified unit test framework defined by \pkg{pkgmaker} 
 #' (see \code{\link{utest}}).
@@ -399,23 +411,60 @@ isCRAN_timing <- function() isCRANcheck('timing')
 #' isCHECK()
 #' 
 isCHECK <- function(){
-	isCRANcheck() || !isFALSE(utestCheckMode(raw=FALSE))
+	isCRANcheck() || !isFALSE(utestCheckMode())
 }
 
-utestCheckMode <- function(value, raw=TRUE){
-	if( missing(value) ){
-		val <- Sys.getenv()[.utestCheckEnvarname]
-		# convert false values to FALSE if required
-		if( !raw && (is.na(val) || !nchar(val) || tolower(val) == 'false' || val == '0') ){
-			val <- FALSE
-		}
-		val
-	}else{
-		old <- utestCheckMode()
-		if( is_NA(value) ) Sys.unsetenv(.utestCheckEnvarname) # unset
-		else do.call(Sys.setenv, setNames(list(value), .utestCheckEnvarname)) # set value
-		# return old value
-		old	
-	}	
+#' System Environment Variables
+#' 
+#' @param name variable name as a character string.
+#' @param raw logical that indicates if one should return the raw value or
+#' the convertion of any false value to \code{FALSE}.
+#' 
+#' @return the value of the environment variable as a character string or 
+#' \code{NA} is the variable is not defined \strong{at all}.
+#' 
+#' @export
+#' @examples
+#' 
+#' # undefined returns FALSE
+#' Sys.getenv_value('TOTO')
+#' # raw undefined returns NA
+#' Sys.getenv_value('TOTO', raw = TRUE)
+#' 
+#' Sys.setenv(TOTO='bla')
+#' Sys.getenv_value('TOTO')
+#' 
+#' # anything false-like returns FALSE
+#' Sys.setenv(TOTO='false'); Sys.getenv_value('TOTO')
+#' Sys.setenv(TOTO='0'); Sys.getenv_value('TOTO')
+#' 
+#' # cleanup
+#' Sys.unsetenv('TOTO')
+#' 
+Sys.getenv_value <- function(name, raw = FALSE){
+    val <- setNames(Sys.getenv()[name], NULL)
+    if( raw ) return(val)
+    # convert false values to FALSE if required
+    if( is.na(val) || !nchar(val) || identical(tolower(val), 'false') || val == '0' ){
+        val <- FALSE
+    }
+    val
 }
 
+checkMode_function <- function(varname){
+    
+    .varname <- varname
+    function(value, raw = FALSE){
+        if( missing(value) ) Sys.getenv_value(.varname, raw = raw)
+        else{
+            old <- Sys.getenv_value(.varname, raw = TRUE)
+            if( is_NA(value) ) Sys.unsetenv(.varname) # unset
+            else do.call(Sys.setenv, setNames(list(value), .varname)) # set value
+            # return old value
+            old	
+        }	
+    }
+}
+
+
+utestCheckMode <- checkMode_function('_R_CHECK_RUNNING_UTESTS_')

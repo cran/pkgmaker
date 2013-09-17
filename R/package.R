@@ -6,6 +6,7 @@
 
 #' @include utils.R
 #' @include devutils.R
+#' @import stats
 NULL
 
 #' Default Load/Unload Functions
@@ -220,3 +221,15 @@ simpleRegistry <- function(name, envir=topenv(parent.frame()), verbose=FALSE){
 	#
 	invisible(.obj)
 }
+
+
+#' Defunct Functions in pkgmaker
+#' 
+#' These functions have been defunct or superseded by other 
+#' functions. 
+#' 
+#' @param ... extra arguments
+#' 
+#' @rdname pkgmaker-defunct
+#' @name pkgmaker-defunct
+NULL

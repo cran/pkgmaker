@@ -1,8 +1,5 @@
-### R code from vignette source 'pkgmaker-unitTests.Rnw'
 
-###################################################
-### code chunk number 1: pkgmaker-unitTests.Rnw:10-15
-###################################################
+## ----setup, include=FALSE------------------------------------------------
 pkg <- 'pkgmaker'
 require( pkg, character.only=TRUE )
 prettyVersion <- packageDescription(pkg)$Version
