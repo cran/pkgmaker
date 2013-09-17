@@ -227,7 +227,6 @@ latex_bibliography <- function(PACKAGE, file=''){
     else cmd
 }
 
-#' @importFrom methods is
 is.rnw <- function(x){
 	is(x, 'rnw')
 }
@@ -273,7 +272,7 @@ runVignette.rnw_knitr <- function(x, file=NULL, ..., fig.path=TRUE, cache.path=T
 	opts_chunk$set(...)
 	
 	# run knitr
-	e <- new.env()
+	e <- new.env(parent = .GlobalEnv)
 	if( FALSE && (is.null(file) || file_extension(file) %in% c('tex', 'pdf')) ){
 		ofile <- if( file_extension(file) == 'pdf' ) file else NULL 
 		knit2pdf(x$file, ofile, envir=e)
@@ -889,7 +888,9 @@ hook_try <- local({
     
         # remove hacked version of try
         if( !before ){
-            if( .try_defined ) remove('try', envir = envir)
+            if( .try_defined && exists('try', envir = envir, inherits = FALSE) ){
+                remove(list = 'try', envir = envir)
+            }
             .try_defined <<- FALSE
             return(invisible())
         }
