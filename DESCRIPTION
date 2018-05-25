@@ -1,11 +1,10 @@
 Package: pkgmaker
 Type: Package
-Title: Package development utilities
-Version: 0.22
-Date: 2013-09-17
-Author: Renaud Gaujoux
-Maintainer: Renaud Gaujoux <renaud@tx.technion.ac.il>
-Description: This package provides some low-level utilities to use for package
+Title: Development Utilities for R Packages
+Version: 0.27
+Date: 2018-05-25
+Authors@R: person("Renaud", "Gaujoux", email = "renozao@protonmail.com", role = c("aut", "cre"))
+Description: Provides some low-level utilities to use for package
     development. It currently provides managers for multiple package specific
     options and registries, vignette, unit test and bibtex related utilities.
     It serves as a base package for packages like NMF, RcppOctave, doRNG, and
@@ -16,19 +15,22 @@ Description: This package provides some low-level utilities to use for package
 License: GPL (>= 2)
 URL: https://renozao.github.io/pkgmaker
 BugReports: http://github.com/renozao/pkgmaker/issues
-SCM: github:renozao, r-forge
 LazyLoad: yes
-Depends: R (>= 3.0.0), stats, registry
-Imports: methods, tools, codetools, digest, stringr, xtable, grDevices
-Suggests: devtools (>= 0.8), bibtex, RUnit, testthat, knitr,
-        ReportingTools, hwriter, argparse
-Collate: 'utils.R' 'logging.R' 'unitTests.R' 'data.R' 'namespace.R'
-        'devutils.R' 'package.R' 'options.R' 'is.R' 'registry.R'
-        'bibtex.R' 'packages.R' 'vignette.R' 'files.R'
-        'package-extra.R' 'colors.R' 'graphics.R' 'rd.R' 'project.R'
-        'CLI.R' 'knitr.R' 'repositories.R'
-VignetteBuilder: knitr
-Packaged: 2014-05-14 11:49:09 UTC; renaud
+Encoding: UTF-8
+Depends: R (>= 3.0.0), methods, stats, registry
+Imports: tools, grDevices, utils, graphics, codetools, digest, stringi,
+        magrittr, stringr, xtable, withr, bibtex (>= 0.4)
+Suggests: devtools (>= 0.8), roxygen2, RUnit, testthat, knitr,
+        rmarkdown, yaml, Biobase
+Collate: 'bibtex.R' 'colors.R' 'data.R' 'namespace.R' 'utils.R'
+        'devutils.R' 'files.R' 'graphics.R' 'options.R' 'logging.R'
+        'unitTests.R' 'is.R' 'knitr.R' 'registry.R' 'package-extra.R'
+        'package.R' 'packages.R' 'project.R' 'rd.R' 'user.R'
+        'vignette.R' 'with.r'
+RoxygenNote: 6.0.1.9000
 NeedsCompilation: no
+Packaged: 2018-05-25 21:48:47 UTC; renaud
+Author: Renaud Gaujoux [aut, cre]
+Maintainer: Renaud Gaujoux <renozao@protonmail.com>
 Repository: CRAN
-Date/Publication: 2014-05-14 16:18:51
+Date/Publication: 2018-05-25 22:18:01 UTC

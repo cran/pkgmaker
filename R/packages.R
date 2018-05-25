@@ -4,6 +4,9 @@
 # Creation: 29 Jun 2012
 ###############################################################################
 
+#' @include package.R
+NULL
+
 path.protect <- function(...){
   f <- file.path(...)
   if( .Platform$OS.type == 'windows' ){
@@ -105,118 +108,53 @@ quickinstall <- function(path, destdir=NULL, vignettes=FALSE, force=TRUE, ..., l
 	invisible(res)
 }
 
-#' Require a Package
+#' Loading Packages
 #' 
-#' Require a package with a custom error message
+#' \code{require.quiet} silently requires a package, and \code{qrequire} is an alias to \code{require.quiet}.
 #' 
-#' @param pkg package name as a character string
-#' @param ... extra arguments concatenated to for the header of the 
-#' error message 
+#' @param ... extra arguments passed to \code{\link{library}} or \code{\link{require}}.
+#' 
+#' @rdname packages
+#' @family require
+#' @export
+require.quiet <- .silenceF(require)
+#' @rdname packages
+#' @export
+qrequire <- require.quiet
+
+#' @describeIn packages silently loads a package.
 #' 
 #' @export
-requirePackage <- function(pkg, ...){
-	
-	if( !require(pkg, character.only=TRUE) ){
-		if( nargs() > 1L ) stop(..., " requires package(s) ", str_out(pkg))
-		else stop("Could not find required package(s) ", str_out(pkg))
-	}
-}
+qlibrary <- .silenceF(library)
 
-parse_deps <- function (string) 
-{
-	if (is.null(string)) 
-		return()
-	string <- gsub("\\s*\\(.*?\\)", "", string)
-	pieces <- strsplit(string, ",")[[1]]
-	pieces <- gsub("^\\s+|\\s+$", "", pieces)
-	pieces[pieces != "R"]
-}
-
-#' List Package Dependencies
+#' @describeIn packages tries loading a package with base \code{\link{require}}  
+#' and stops with a -- custom -- error message if it fails to do so.
 #' 
-#' @param x path to package source directory or file.
-#' @param all logical that indicates if all dependencies should be returned,
-#' or only the required ones.
-#' @param as.list logical that indicates if the result should be a list with one element
-#' per type of dependency.
-#' @param available a matrix of available packages (as returned by \code{\link{available.packages}}), 
-#' from which the dependencies are retrieved.
-#' This means that there must be a row for the package \code{x}.
-#'  
-#' @export
-#' 
-packageDependencies <- function(x, all = TRUE, as.list = FALSE, available = NULL){
-    
-    if( is.null(available) ) x <- as.package(x, extract = TRUE)
-    else{
-        p <- available[, 'Package']
-        if( !x %in% p ) return(NA)
-        x <- available[p == x, , drop = FALSE][1L, ]
-        names(x) <- tolower(names(x))
-    }
-    
-	d <- lapply(x[c('depends', 'imports', 'linkingto', 'suggests')], parse_deps)
-	d <- unlist(d)
-    d <- d[!is.na(d)]
-    if( !length(d) ) return()
-    names(d) <- gsub("[0-9]+$", "", names(d))
-    
-    # remove non-required
-    if( !all ) d <- d[!names(d) %in% c('suggests')]    
-    if( as.list ) d <- split(unname(d), names(d))
-    d
-}
-
-.biocLite <- function(...){
-	# install BiocInstaller if necessary
-	if( !require.quiet('BiocInstaller') ){
-		message("Installing biocLite")
-		source('http://www.bioconductor.org/biocLite.R')
-	}
-	f <- get('biocLite', 'package:BiocInstaller')
-	f(...)
-}
-
-#' Installing All Package Dependencies
-#' 
-#' Install all dependencies from a package source directory or 
-#' package source file. 
-#' 
-#' @param pkg package path or source file
-#' @param all logical that indicates if 'Suggests' packages
-#' should be installed.
-#' @param ... extra arguments passed to \code{\link{install.packages}}.
-#' @param dryrun logical that indicates if the packages should be 
-#' effectively installed or only shown. 
+#' @param msg error message to use, to which is appended the string 
+#' \code{' requires package <pkg>'} to build the error message. 
+#' @param package name of the package to load.
+#' @inheritParams base::require
 #' 
 #' @export
 #' @examples 
 #' 
-#' try( install.dependencies('Matrix', dryrun=TRUE) )
-#' \dontrun{
-#' install.dependencies("mypackage_1.0.tar.gz", dryrun=TRUE)
-#' }
+#' mrequire('Running this example', 'stringr')
+#' try( mrequire('Doing impossible things', 'notapackage') )
 #' 
-install.dependencies <- function (pkg = NULL, all=FALSE, ..., dryrun=FALSE) 
-{
-	pkg <- as.package(pkg, extract=TRUE)
-	deps <- c(parse_deps(pkg$depends)
-			, parse_deps(pkg$imports) 
-			, parse_deps(pkg$linkingto)
-			, if( isTRUE(all) ) parse_deps(pkg$suggests) )
-	not.installed <- function(x) length(find.package(x, quiet = TRUE)) == 0
-	message("Package dependencies for ", pkg$package, ": ", str_out(deps, Inf))
-	deps <- Filter(not.installed, deps)
-	if (length(deps) == 0){
-		message("Missing: none")
-		return(invisible())
+mrequire <- function(msg, package, lib.loc = NULL, quietly = FALSE){
+	
+	if( !require(package = package, character.only = TRUE, lib.loc = lib.loc, quietly = quietly) ){
+		if( !is.null(msg) ) stop(msg, " requires package ", str_out(package))
+		else stop("Could not find required package ", str_out(package))
 	}
-	message("Missing: ", str_out(deps, Inf))
-	message("Installing ", length(deps), " dependencies for ", pkg$package)
-	if( !dryrun ){
-		.biocLite(deps, ...)
-	}
-	invisible(deps)
+}
+
+#' @param pkg package name to load.
+#' @rdname pkgmaker-deprecated
+#' @export
+requirePackage <- function(pkg, ...){
+     .Deprecated('mrequire')
+#     mrequire(msg = c(...), package = pkg)   
 }
 
 #' Setting Mirrors and Repositories
@@ -247,19 +185,17 @@ setBiocMirror <- function(url='http://www.bioconductor.org', version=NULL, uniqu
     options(repos=repos)
 }
 
-#' \code{getBiocMirror} is a shortcut for \code{getOption('BioC_mirror')}, which 
+#' @describeIn mirrors is a shortcut for \code{getOption('BioC_mirror')}, which 
 #' returns the current Bioconductor mirror as used by \code{biocLite}.
 #'  
 #' @export
-#' @rdname mirrors
 getBiocMirror <- function(){
 	getOption('BioC_mirror')
 }
-#' \code{getBiocRepos} returns urls to all Bioconductor repositories on a 
+#' @describeIn mirrors returns urls to all Bioconductor repositories on a 
 #' given mirror.
 #' 
 #' @export
-#' @rdname mirrors
 getBiocRepos <- function(url='http://www.bioconductor.org', version=NULL){
 	
 	if( is.null(url) ){
@@ -289,9 +225,8 @@ getBiocRepos <- function(url='http://www.bioconductor.org', version=NULL){
     setNames(paste(url, 'packages', version, biocParts, sep='/'), names(biocParts))
 }
 
-#' \code{setCRANMirror} sets the preferred CRAN mirror.
+#' @describeIn mirrors sets the preferred CRAN mirror.
 #' 
-#' @rdname mirrors
 #' @export
 setCRANMirror <- function(url=CRAN, unique=TRUE){
 	
@@ -303,18 +238,19 @@ setCRANMirror <- function(url=CRAN, unique=TRUE){
     options(repos=repos)
 }
 
+#' Main CRAN Mirror URL
+#' 
 #' \code{CRAN} simply contains the url of CRAN main mirror 
-#' (\url{http://cran.r-project.org}), and aims at simplifying its use, e.g., in 
+#' (\url{https://cran.r-project.org}), and aims at simplifying its use, e.g., in 
 #' calls to \code{\link{install.packages}}.
 #' 
-#' @rdname mirrors
 #' @export
 #' 
 #' @examples
 #' \dontrun{
 #' install.packages('pkgmaker', repos=CRAN)
 #' }
-CRAN <- 'http://cran.r-project.org'
+CRAN <- 'https://cran.r-project.org'
 
 
 #' Adding Package Libraries
@@ -415,13 +351,12 @@ isCRANcheck <- function(...){
   
   any(tests)
 }
-#' \code{isCRAN_timing} tells if one is running CRAN check with flag \code{'--timing'}.
+#' @describeIn isCRANcheck tells if one is running CRAN check with flag \code{'--timing'}.
 #' 
 #' @export
-#' @rdname isCRANcheck
 isCRAN_timing <- function() isCRANcheck('timing')
 
-#' \code{isCHECK} tries harder to test if running under \code{R CMD check}.
+#' @describeIn isCRANcheck tries harder to test if running under \code{R CMD check}.
 #' It will definitely identifies check runs for: 
 #' \itemize{
 #' \item unit tests that use the unified unit test framework defined by \pkg{pkgmaker} (see \code{\link{utest}});
@@ -439,8 +374,7 @@ isCRAN_timing <- function() isCRANcheck('timing')
 #' \code{_R_CHECK_RUNNING_UTESTS_=FALSE}, so that all tests are run and reported when 
 #' generating them.
 #' 
-#' @references \url{https://github.com/renozao/roxygen2}
-#' @rdname isCRANcheck
+#' @references \url{https://github.com/renozao/roxygen}
 #' @export
 #' 
 #' @examples
@@ -507,3 +441,113 @@ checkMode_function <- function(varname){
 
 
 utestCheckMode <- checkMode_function('_R_CHECK_RUNNING_UTESTS_')
+
+is_packagedir <- function(path, type = c('both', 'install', 'dev')){
+    
+    type <- match.arg(type)
+    switch(type,
+        both = is.file(file.path(path, 'DESCRIPTION')),
+        install = is.dir(file.path(path, 'Meta')),
+        dev = is.file(file.path(path, 'DESCRIPTION')) && !is.dir(file.path(path, 'Meta'))
+    )
+}
+
+package_buildname <- function(path, type = c('source', 'win.binary', 'mac.binary')){
+    p <- as.package(path)
+    type <- match.arg(type)
+    
+    ext <- switch(type,
+            source = 'tar.gz',
+            win.binary = 'zip',
+            mac.binary = 'tgz')
+    sprintf("%s_%s.%s", p$package, p$version, ext)
+}
+
+
+#' Build a Windows Binary Package
+#' 
+#' @param path path to a source or already installed package
+#' @param outdir output directory
+#' @param verbose logical or numeric that indicates the verbosity level
+#' 
+#' @return Invisibly returns the full path to the generated zip file.
+#' @export
+#' @examples 
+#' \dontrun{
+#' 
+#' # from source directory
+#' winbuild('path/to/package/source/dir/')
+#' # from tar ball
+#' winbuild('PKG_1.0.tar.gz')
+#' 
+#' }
+winbuild <- function(path, outdir = '.', verbose = TRUE){
+    
+    # create output directory if necessary
+    if( !file.exists(outdir) ) dir.create(outdir, recursive = TRUE)
+    outdir <- normalizePath(outdir, mustWork = TRUE)
+    
+    # install package if necessary
+    if( grepl("\\.tar\\.gz$", path) ){
+        pkgpath <- tempfile()
+        on.exit( unlink(pkgpath, recursive = TRUE), add = TRUE)
+        dir.create(pkgpath)
+        if( verbose ) message("* Installing tar ball ", basename(path), " in temporary library ", pkgpath, " ... ")
+        p <- as.package(path, extract = TRUE)
+        R.CMD('INSTALL', '-l ', pkgpath, ' ', path)
+        if( verbose ) message('OK')
+        path <- file.path(pkgpath, p$package)
+    }
+    
+    # make sure it is a pure R package
+    if( file.exists(file.path(path, 'src')) ){
+        stop("Cannot build windows binary for non-pure R packages (detected src/ sub-directory)")
+    }
+    p <- as.package(path)
+    
+    # install package in temporary directory if necessary
+    pkgpath <- p$path
+    if( !is_packagedir(path, 'install') ){
+        pkgpath <- tempfile()
+        on.exit( unlink(pkgpath, recursive = TRUE), add = TRUE)
+        dir.create(pkgpath)
+        if( verbose ) message("* Building ", p$package, " and installing in temporary library ", pkgpath, " ... ", appendLF = verbose > 1)
+        olib <- .libPaths()
+        on.exit( .libPaths(olib), add = TRUE)
+        add_lib(pkgpath)
+        devtools::install(path, quiet = verbose <= 1, reload = FALSE)
+        if( verbose ) message('OK')
+        pkgpath <- file.path(pkgpath, p$package)
+        
+    }
+    if( verbose ) message('* Using package installation directory ', pkgpath)
+    
+    # build package filename
+    outfile <- file.path(outdir, package_buildname(pkgpath, 'win.binary'))
+    
+    ## borrowed from package roxyPackage
+    owd <- getwd()
+    on.exit( setwd(owd), add = TRUE)
+    setwd(dirname(pkgpath))
+    pkgname <- p$package
+    if( verbose ) message('* Removing platform information ... ', appendLF = FALSE)
+    pkgInfo <- readRDS(pkgInfo_file <- file.path(pkgpath, 'Meta/package.rds'))
+    pkgInfo$Built$Platform <- ''
+    saveRDS(pkgInfo, pkgInfo_file)
+    if( verbose ) message('OK')
+    if( verbose ) message('* Checking libs/ ... ', appendLF = FALSE)
+    if( has_libs <- file.exists(libs_dir <- file.path(pkgpath, 'libs')) ) unlink(libs_dir, recursive = TRUE)
+    if( verbose ) message(has_libs)
+    # make a list of backup files to exclude
+    win.exclude.files <- list.files(pkgname, pattern=".*~$", recursive=TRUE, full.names = TRUE)
+    if(length(win.exclude.files) > 0){
+        win.exclude.files <- paste0("-x \"", paste(win.exclude.files, collapse="\" \""), "\"")
+    }
+    if( verbose ) message('* Creating windows binary package ', basename(outfile), ' ... ', appendLF = TRUE)
+    if( file.exists(outfile) ) unlink(outfile)
+    zip(outfile, pkgname, extras = win.exclude.files)
+    if( verbose ) message('OK')
+    
+    # return path to generated zip file
+    invisible(outfile)
+}
