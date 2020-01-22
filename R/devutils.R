@@ -523,6 +523,13 @@ NotImplemented <- function(msg){
 #' 
 packageData <- function(list, envir = .GlobalEnv, ..., options = NULL, stringsAsFactors = getOption('stringsAsFactors', TRUE)){
 	
+  # workaround for when this function is called under batchtools
+  # See https://github.com/mllg/batchtools/issues/195
+  if( !length(options) ){
+    options <- setNames(list(1), tempfile())
+    
+  }
+  
 	withr::with_options(options, {
 		# same as utils::data if no 'list' argument
 		if( missing(list) ) return( data(..., envir=envir) )
@@ -541,7 +548,7 @@ packageData <- function(list, envir = .GlobalEnv, ..., options = NULL, stringsAs
 		}
 		if( length(list) == 1L ) .get(list, envir=envir)
 		else sapply(list, .get, envir=envir, simplify=FALSE)
-		
+    
 	})
 	
 }
@@ -549,6 +556,12 @@ packageData <- function(list, envir = .GlobalEnv, ..., options = NULL, stringsAs
 #' @describeIn packageData loads a package data in the parent frame.
 #' It is a shortcut for \code{packageData(list, ..., envir=parent.frame())}.
 #' 
+#' @param error a logical that indicates whether an error should be thrown if 
+#' the requested data cannot be found.
+#' @param simplify logical that indicates if queries of one object only (i.e. argument `list` 
+#' is of length one) should return the data object itself. 
+#'  
+#' @importFrom assertthat assert_that is.scalar
 #' @export
 #' @examples
 #' 
@@ -559,7 +572,149 @@ packageData <- function(list, envir = .GlobalEnv, ..., options = NULL, stringsAs
 #' }
 #' }
 #' 
-ldata <- function(list, ...){
+ldata <- function(list, ..., package = NULL, error = TRUE, simplify = TRUE){
+  # parameter check
+  if( missing(list) ) list <- NULL
+  assert_that(is.null(list) || (is.vector(list) && is.character(list))
+                , msg = "Invalid argument 'list': value must be NULL or a character vector.")
+  assert_that(is.null(package) || isNZString(package), msg = "Invalid argument 'package': value must be NULL or a non-empty string.")
+  assert_that(is.scalar(error) && is.logical(error), msg = "Invalid argument 'error': value must be a single logical.")
+  assert_that(is.scalar(simplify) && is.logical(simplify), msg = "Invalid argument 'simplify': value must be a single logical.")
+  ##
+  
+  # load data.list
+  if( is.null(package) || qrequire(package, character.only = TRUE) ){
+    dlist <- list.data(package = package)[["data"]]
+    
+  }else{
+    msg <- sprintf("Could not find data objects %s in package '%s': package not found.", str_out(list, Inf), package)
+    if( error ) stop(msg)
+    else warning(msg)
+    dlist <- character()
+    
+  }
+  # limit to requested data list
+  if( !missing(list) || length(list) ){
+    dlist <- dlist[dlist %in% list]
+    
+  }
+  # pre-check that the requested data exist
+  if( !error ){
+    # initialize result list
+    res <- sapply(list, function(x) NULL, simplify = FALSE)
+    list <- intersect(list, dlist)
+    
+  }
+  
+  # fetch the data objects
 	e <- parent.frame()
-	packageData(list=list, ..., envir=e)
+  res_data <- sapply(list, function(l) packageData(list=l, ..., envir=e, package = package), simplify = FALSE)
+  
+  # return 
+  if( error ){
+    # simplify if requested
+    if( simplify && length(res_data) == 1L ) res_data <- res_data[[1L]]
+    return(res_data)
+    
+  }else{
+    if( length(miss <- setdiff(names(res), names(res_data))) ){
+      pkg_str <- "in the currently loaded packages"
+      if( !is.null(package) ) pkg_str <- paste0("in package ", package)
+      warning(sprintf("Could not find data object(s) %s: %s", pkg_str, str_out(miss, Inf)))
+      
+    }
+    #
+    for(n in names(res_data)){
+      res[[n]] <- res_data[[n]]
+    }
+    if( simplify && length(res) == 1L ) res <- res[[1L]]
+    res
+    
+  }
+  
+}
+
+#' List Package Data Objects
+#' 
+#' Lists data objects that are shipped within package(s).
+#' 
+#' @param package a single character string that specifies the name of a particular
+#' package where to look for data objects.
+#' 
+#' @return a `data.frame` object with columns:
+#' 
+#'   * `package`: name of the package that holds the data object.
+#'   * `data`: name of the key to use in [utils::data] or [ldata] to load the data object.
+#'   * `object`: name of the (sub-)object that is contained in the data object.
+#' 
+#' @seealso [utils::data], [ldata]
+#' @export
+#' @examples
+#' 
+#' # list all data objects
+#' head(list.data())
+#' 
+#' # list all data objects in package 'datasets'
+#' subset(list.data("datasets"), data %in% "beavers")
+#' 
+list.data <- function(package = NULL){
+  dlist <- data(package = package)[["results"]]
+  m <- str_match(dlist[, "Item"], "^(([^(]+)|(([^(]+)\\(([^)]+)\\)))$")
+  key <- ifelse(!is.na(m[, 3L]), m[, 3L], m[, 6L])
+  stopifnot(!anyNA(key))
+  obj_name <- ifelse(!is.na(m[, 3L]), m[, 3L], m[, 5L])
+  stopifnot(!anyNA(obj_name))
+  data.frame(package = dlist[, "Package"], data = key, object = obj_name, stringsAsFactors = FALSE)
+  
+}
+
+
+#' Generate a Loading Script for Development Packages
+#' 
+#' Writes a script file that contains code that loads a given development package.
+#' 
+#' This is useful when we want to load a development package in `batchtools` registries:
+#' 
+#' ```
+#' library(devtools)
+#' library(batchtools)
+#' 
+#' load_all("path/to/pkgA")
+#' makeRegistry(..., source = load_all_file("pkgA"))
+#' ```
+#' 
+#' @param path a character string that contains the path to the development package.
+#' @param package the name of the package for which the loading script must be generated.
+#' It must be a package that has already been loaded with [devtools::load_all] in the current
+#' session, so that its path can be retrieved.
+#' @param dest the path to script file to create (as a character string).
+#' If not provided, then the script is written in a temporary .R file with prefix 
+#' `"load_all_<pkgname>_"`.
+#' 
+#' @return a character string that contains the path to the script file.
+#' 
+#' @export
+load_all_file <- function(path = path.package(package), package, dest = NULL){
+  
+  if( !missing(path) && !missing(package)  ){
+    stop("Arguments 'path' and 'package' are exclusive: only one of them can be provided.")
+    
+  }
+  if( !requireNamespace('devtools', quietly = TRUE) ) 
+    stop("Package 'devtools' is required to load development package information.")
+  
+  # load package object
+  if( !missing(package) ) path <- path.package(package) 
+  pkg <- devtools::as.package(path)
+   
+  # define destination script file
+  if( is.null(dest) ) dest <- tempfile(paste0("load_all_", pkg[["package"]], "_"), fileext = ".R")
+  # write file
+  cat(sprintf("# package loader script (generated on: %s) \nmessage(\"* Loader script '%s'\")\nmessage(\"* Loading development package %s from: '%s'\")\ndevtools::load_all(\"%s\")\n"
+          , date(), dest, pkg[["package"]], pkg[["path"]], pkg[["path"]])
+      , file = dest)
+  
+  # return path to script
+  dest
+  
 }

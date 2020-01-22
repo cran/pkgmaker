@@ -8,11 +8,18 @@
 \alias{str_pkg}
 \alias{str_md5sum}
 \alias{str_hash}
+\alias{str_dim}
 \alias{str_bs}
 \title{Formatting Utilities}
 \usage{
-str_out(x, max = 3L, quote = is.character(x), use.names = FALSE,
-  sep = ", ", total = FALSE)
+str_out(
+  x,
+  max = 3L,
+  quote = is.character(x),
+  use.names = FALSE,
+  sep = ", ",
+  total = FALSE
+)
 
 str_desc(object, exdent = 0L)
 
@@ -25,6 +32,8 @@ str_pkg(pkg, lib.loc = NULL)
 str_md5sum(x)
 
 str_hash(x, algo = "md5")
+
+str_dim(x, dims = dim(x))
 
 str_bs(x)
 }
@@ -58,8 +67,11 @@ should spread over more than one lines.}
 
 \item{algo}{The algorithms to be used; currently available choices are
     \code{md5}, which is also the default, \code{sha1}, \code{crc32},
-    \code{sha256}, \code{sha512}, \code{xxhash32}, \code{xxhash64} and
-    \code{murmur32}.}
+    \code{sha256}, \code{sha512}, \code{xxhash32}, \code{xxhash64},
+    \code{murmur32} and \code{spookyhash}.}
+
+\item{dims}{a numeric vector of dimensions.
+Default is to use the input object dimensions (via function \code{dims()})}
 }
 \value{
 a single character string
@@ -83,15 +95,14 @@ It typically formats the output \code{capture.output(args(object))}.
 
 \item \code{str_hash}: computes hash of a character vector using \code{\link[digest]{digest}}.
 
-\item \code{str_bs}: substitutes backspace characters (\code{\\b}) to produce
+\item \code{str_dim}: builds a string that describes the dimension of an object, in the form
+\verb{n x m} for 2D-objects, \verb{n x m x p} for 3D-objects, and so on.
+
+\item \code{str_bs}: substitutes backspace characters (\verb{\\\\b}) to produce
 a character string as it would be displayed in the console.
 }}
 
 \examples{
-\dontshow{
-options(R_CHECK_RUNNING_EXAMPLES_=TRUE) ## roxygen generated flag
-}
-
 
 x <- letters[1:10]
 str_out(x)
@@ -105,17 +116,17 @@ str_class(matrix())
 
 # Backspace substitution
 str_bs("abc")
-str_bs("abc\\b")
-str_bs("abc\\b\\b")
-str_bs("abc\\bd")
-str_bs("abc\\b\\bde\\b")
+str_bs("abc\b")
+str_bs("abc\b\b")
+str_bs("abc\bd")
+str_bs("abc\b\bde\b")
 
 # more complex example
-x <- "\\bab\\nc\\bd\\n\\babc\\b\\bd"
-cat(x, "\\n")
+x <- "\bab\nc\bd\n\babc\b\bd"
+cat(x, "\n")
 y <- str_bs(x)
 y
-cat(y, "\\n")
+cat(y, "\n")
 
 }
 \author{
