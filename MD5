@@ -1,12 +1,12 @@
-b229658a98f1185ac7640089e707a7dd *DESCRIPTION
-0e22c932eff1dfad75b740bda2eacd13 *NAMESPACE
+6e528d8ff62267ea3db81d4f5099d4d1 *DESCRIPTION
+df94e6a5ade6df9bb8f1c8f2292d5f69 *NAMESPACE
 610fcf09d13bbb06fb6d21edf141658a *R/bibtex.R
 3f150d8567e1b389eba0d5dce39f9120 *R/colors.R
 8ee21e7a5b49713aaccb970703839ec4 *R/data.R
-b0d9810b87a4430da34dc2548051ab06 *R/devutils.R
+c3851088392040acfc5974c06c1a7695 *R/devutils.R
 e082e010cba1799659cb36ed6811cc96 *R/files.R
 2d952bca9ca2ea7a3a6103eb9a83f24a *R/graphics.R
-1ea74f92b7a6e61da3e76564163bc375 *R/is.R
+5121d06607826aa09d69a862b69f2af1 *R/is.R
 f05edb3196611fbd99f65fe79249a1fa *R/knitr.R
 8926478ed8db5b8b709900bc2adcbe41 *R/logging.R
 c4a817780987c78e18c232f5f7f655cf *R/namespace.R
@@ -83,7 +83,7 @@ ee89fa428ffff7727e7eaaf0a2d03c7f *man/namespace.Rd
 d18910fc6fea4cf684d5cba7d9fff55d *man/oneoffVariable.Rd
 e0e1f7bb2b8f76277a3097ae4a977e6f *man/options.Rd
 8fddc021f3f5db215100de5fc3e71926 *man/orderVersion.Rd
-4e9edf2a851ddf36b81354c9fe80dff1 *man/packageData.Rd
+e13c85348c2831cc20b07a00e2b06dac *man/packageData.Rd
 6cda2bcd94a32c9d3e74eaba843280b7 *man/packageExtra.Rd
 3b1f008130ff51b7d491e8d708c80dce *man/packageReference.Rd
 f8d2ce9794a90373e0535db720725055 *man/packageTestEnv.Rd
@@ -125,4 +125,4 @@ be5da832084dc3d5de678791cecfde0b *man/vignette.Rd
 2f74d41f342702d516b1e682de04121a *tests/testthat.R
 9e27e059fce6d5b59a32f6174107b3b4 *tests/testthat/test-data.r
 63c0d364cffb6b4eed6bd90af88d9f1c *tests/testthat/test-options.r
-eaec5526c9bb1e6fb0fbbada9aef3940 *tests/testthat/test-utils.r
+baaecc768857b39849ac5ed96565334e *tests/testthat/test-utils.r
