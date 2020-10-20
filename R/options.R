@@ -11,16 +11,15 @@ NULL
 #' 
 #' The following functions to access/set the options from the set are assigned 
 #' in \code{envir}:
-#' \describe{
-#' \item{<subset>Options}{}
-#' \item{<subset>GetOption}{}
-#' }
+#' 
+#' * `<subset>Options`
+#' * `<subset>GetOption`
 #' 
 #' @param ... a single named list or named arguments that provide the default 
 #' options and their values.
 #' @param NAME name of the set of options.
 #' This is used as a prefix for the name of the associated global 
-#' option: \code{package:<name>}.
+#' option: `package:<name>`.
 #' @param ENVIR environment where the option wrapper functions will be defined.
 #' No function is defined if \code{ENVIR=NULL} 
 #' @param RESET a logical that indicates whether the option set should overwrite
