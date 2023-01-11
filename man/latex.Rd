@@ -46,8 +46,11 @@ dedicated argument is not missing should be considered.}
 \item{file}{connection where to print. If \code{NULL} the result is returned
 silently.}
 }
+\value{
+A character string or nothing and output the command to stdout.
+}
 \description{
-\code{latex_preamble} outputs/returns command definition LaTeX commands to
+\code{latex_preamble} outputs/returns LaTeX command definitions to
 be put in the preamble of vignettes.
 }
 \details{
@@ -57,10 +60,10 @@ bibliography command.
 }
 \section{Functions}{
 \itemize{
-\item \code{latex_bibliography}: \code{latex_bibliography} prints or return a LaTeX command that includes a
+\item \code{latex_bibliography()}: \code{latex_bibliography} prints or return a LaTeX command that includes a
 package bibliography file if it exists.
-}}
 
+}}
 \examples{
 
 latex_preamble()

@@ -26,17 +26,27 @@ string if the file does not exist.
 objects. It returns \code{NULL} if the file does not exist.
 }}
 }
+\value{
+\itemize{
+\item \code{packageReferenceFile}: returns the path to the REFERENCES file as a character string.
+}
+
+\itemize{
+\item \code{package_bibliography}: returns the bibiliography as a bibtex list object,
+as returned by \link[rbibutils:readBib]{rbibutils::readBib}.
+}
+}
 \description{
 Utility functions to work with BiBTeX files.
 }
 \section{Functions}{
 \itemize{
-\item \code{packageReferenceFile}: returns the path to a package REFERENCES.bib file.
+\item \code{packageReferenceFile()}: returns the path to a package REFERENCES.bib file.
 
-\item \code{package_bibliography}: returns the bibliography associated with a package.
+\item \code{package_bibliography()}: returns the bibliography associated with a package.
 This can
-}}
 
+}}
 \examples{
 
 packageReferenceFile('pkgmaker')

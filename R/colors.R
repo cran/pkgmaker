@@ -11,6 +11,7 @@
 #'  
 #' @inheritParams grDevices::col2rgb
 #' 
+#' @return a character vector of color specifications.
 #' @export
 #' @examples
 #' 
@@ -21,7 +22,8 @@
 #' alphacol(4, 5)
 #' 
 alphacol <- function(col, alpha = FALSE){
-    col <- as.character(as.hexmode(col2rgb(col, alpha)))
+    col <- as.hexmode(col2rgb(col, alpha))
+    storage.mode(col) <- "character"
     if( !is.logical(alpha) ){
         if( alpha < 1 ) alpha <- alpha * 255
         alpha <- round(alpha)

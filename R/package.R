@@ -13,7 +13,8 @@ NULL
 #' 
 #' @inheritParams base::.onLoad
 #' @inheritParams base::library.dynam
-#' 
+#'
+#' @return Returns nothing, used only for their side-effects. 
 #' @export
 #' @rdname load
 #' 
@@ -80,11 +81,14 @@ onUnload <- function(libpath) {
 #' Currently not used.
 #' @param verbose logical that toggles verbose messages.
 #'
+#'
+#' @return `postponeAction` returns the names of the postponed actions.
+#' 
 #' @import digest
 #' @export
 #' 
 #' @examples
-#' opt <- options(verbose=2)
+#' opt <- options(actions.verbose=2)
 #' 
 #' # define actions
 #' postponeAction(function(){print(10)}, "print")
@@ -97,7 +101,8 @@ onUnload <- function(libpath) {
 #' # restore options
 #' options(opt)
 #' 
-postponeAction <- function(expr, key=digest(tempfile()), group=NULL, envir=topns(strict=FALSE), verbose=getOption('verbose')){
+postponeAction <- function(expr, key=digest(tempfile()), group=NULL, envir=topns(strict=FALSE), 
+                           verbose = getOption('actions.verbose', getOption('verbose'))){
 	
 	# do not do anything if already running delayed actions
 	if( isRunningPostponedAction() ) return()
@@ -127,7 +132,7 @@ postponeAction <- function(expr, key=digest(tempfile()), group=NULL, envir=topns
 
 #' @rdname postponeAction
 #' @export
-runPostponedAction <- function(group=NULL, verbose=getOption('verbose')){
+runPostponedAction <- function(group=NULL, verbose = getOption('actions.verbose', getOption('verbose'))){
 	
 	ns <- topns(strict=FALSE)
 	taskObj <- simpleRegistry('.__delayedTasks__', envir=ns)
@@ -172,6 +177,7 @@ isRunningPostponedAction <- sVariable(FALSE)
 #' @param verbose logical that toggle a verbose message when 
 #' the object is first created.
 #' 
+#' @return a simple registry object that is similar to an R5 object.
 #' @export
 simpleRegistry <- function(name, envir=topenv(parent.frame()), verbose=FALSE){
 	
@@ -229,7 +235,6 @@ simpleRegistry <- function(name, envir=topenv(parent.frame()), verbose=FALSE){
 #' functions. 
 #' 
 #' @param ... extra arguments
-#' 
 #' @rdname pkgmaker-defunct
 #' @name pkgmaker-defunct
 NULL

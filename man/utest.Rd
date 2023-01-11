@@ -48,16 +48,19 @@ Used is of the form \code{x='package:*'}.}
 
 \item{outdir}{output directory}
 }
+\value{
+Returns the result object returned by the unit-test suite executer.
+}
 \description{
 Run unit tests in a variety of settings.
 This is still \strong{very} experimental.
 }
 \section{Methods (by class)}{
 \itemize{
-\item \code{function}: Run the unit test assoicated to a function.
+\item \code{utest(`function`)}: Run the unit test assoicated to a function.
 
-\item \code{character}: Run a package test suite
+\item \code{utest(character)}: Run a package test suite
 
-\item \code{RUnitTestSuite}: Runs a RUnit test suite
+\item \code{utest(RUnitTestSuite)}: Runs a RUnit test suite
+
 }}
-

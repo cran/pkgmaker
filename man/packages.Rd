@@ -33,17 +33,20 @@ mrequire(msg, package, lib.loc = NULL, quietly = FALSE)
     package attaching is printed, and most often, no errors/warnings are
     printed if package attaching fails.}
 }
+\value{
+No return value, called to load packages.
+}
 \description{
 \code{require.quiet} silently requires a package, and \code{qrequire} is an alias to \code{require.quiet}.
 }
 \section{Functions}{
 \itemize{
-\item \code{qlibrary}: silently loads a package.
+\item \code{qlibrary()}: silently loads a package.
 
-\item \code{mrequire}: tries loading a package with base \code{\link{require}}
+\item \code{mrequire()}: tries loading a package with base \code{\link{require}}
 and stops with a -- custom -- error message if it fails to do so.
-}}
 
+}}
 \examples{
 
 mrequire('Running this example', 'stringr')

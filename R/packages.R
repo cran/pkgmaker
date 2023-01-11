@@ -36,7 +36,7 @@ path.protect <- function(...){
 #' This can be usefull if dependencies are installed in this directory.
 #' If \code{NULL}, then the default library path is left unchanged.
 #' 
-#' @return The path of the library where the package was installed.
+#' @return `quickinstall` returns the path of the library where the package was installed.
 #' 
 #' @export
 #' 
@@ -114,6 +114,8 @@ quickinstall <- function(path, destdir=NULL, vignettes=FALSE, force=TRUE, ..., l
 #' 
 #' @param ... extra arguments passed to \code{\link{library}} or \code{\link{require}}.
 #' 
+#' @return No return value, called to load packages.
+#' 
 #' @rdname packages
 #' @family require
 #' @export
@@ -150,6 +152,7 @@ mrequire <- function(msg, package, lib.loc = NULL, quietly = FALSE){
 }
 
 #' @param pkg package name to load.
+#' @return * `requirePackage`: returned no value, called to load a package.
 #' @rdname pkgmaker-deprecated
 #' @export
 requirePackage <- function(pkg, ...){
@@ -170,6 +173,7 @@ requirePackage <- function(pkg, ...){
 #' @param unique logical that indicate if duplicated urls or names should be 
 #' removed.
 #'
+#' @return `setBiocMirror` returns the old set of Bioc repositories.
 #' @rdname mirrors
 #' @export 
 setBiocMirror <- function(url='http://www.bioconductor.org', version=NULL, unique=TRUE){
@@ -246,8 +250,9 @@ setCRANMirror <- function(url=CRAN, unique=TRUE){
 #' 
 #' @export
 #' 
+#' @docType data
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' install.packages('pkgmaker', repos=CRAN)
 #' }
 CRAN <- 'https://cran.r-project.org'
@@ -269,6 +274,7 @@ CRAN <- 'https://cran.r-project.org'
 #' @param append logical that indicates that the paths should be appended
 #' rather than prepended.
 #' 
+#' @return Returns the new set of library paths.
 #' @export
 #' 
 #' @examples
@@ -328,6 +334,8 @@ add_lib <- function(..., append=FALSE){
 #' 
 #' @references Adapted from the function \code{CRAN}
 #' in the \pkg{fda} package.
+#' 
+#' @return A logical flag.
 #' 
 #' @export
 isCRANcheck <- function(...){

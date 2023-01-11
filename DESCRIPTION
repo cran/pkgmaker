@@ -1,13 +1,13 @@
 Package: pkgmaker
 Type: Package
 Title: Development Utilities for R Packages
-Version: 0.32.2
-Date: 2020-10-20
+Version: 0.32.7
+Date: 2023-01-11
 Authors@R: person("Renaud", "Gaujoux", email = "renozao@protonmail.com", role = c("aut", "cre"))
 Description: Provides some low-level utilities to use for package
     development. It currently provides managers for multiple package specific
     options and registries, vignette, unit test and bibtex related utilities.
-    It serves as a base package for packages like NMF, RcppOctave, doRNG, and
+    It serves as a base package for packages like 'NMF', 'RcppOctave', 'doRNG', and
     as an incubator package for other general purposes utilities, that will
     eventually be packaged separately.
     It is still under heavy development and changes in the interface(s) are
@@ -28,10 +28,10 @@ Collate: 'bibtex.R' 'colors.R' 'data.R' 'namespace.R' 'utils.R'
         'unitTests.R' 'is.R' 'knitr.R' 'registry.R' 'package-extra.R'
         'package.R' 'packages.R' 'project.R' 'rd.R' 'user.R'
         'vignette.R' 'with.r'
-RoxygenNote: 7.1.0
+RoxygenNote: 7.2.3
 NeedsCompilation: no
-Packaged: 2020-10-20 19:43:23 UTC; renaud
+Packaged: 2023-01-11 13:54:05 UTC; renaud
 Author: Renaud Gaujoux [aut, cre]
 Maintainer: Renaud Gaujoux <renozao@protonmail.com>
 Repository: CRAN
-Date/Publication: 2020-10-20 21:20:02 UTC
+Date/Publication: 2023-01-11 15:50:05 UTC

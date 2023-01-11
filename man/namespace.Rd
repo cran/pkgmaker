@@ -43,6 +43,22 @@ loading namespace.}
 the name of the loading namespace if \code{env} and \code{info} are
 \code{FALSE}, an environment if \code{env=TRUE}, a list with elements
 \code{pkgname} and \code{libname} if \code{info=TRUE}.
+
+\itemize{
+\item \code{isLoadingNamespace} returns a logical flag.
+}
+
+\itemize{
+\item \code{isNamespaceLoaded2} returns a logical flag.
+}
+
+\itemize{
+\item \code{isDevNamespace} returns a logical flag.
+}
+
+\itemize{
+\item \code{ns_get} returns the requested object or \code{NULL} if not found.
+}
 }
 \description{
 \code{getLoadingNamespace} returns information about the loading namespace.
@@ -51,17 +67,17 @@ an error.
 }
 \section{Functions}{
 \itemize{
-\item \code{isLoadingNamespace}: Tests if a namespace is being loaded.
+\item \code{isLoadingNamespace()}: Tests if a namespace is being loaded.
 
-\item \code{isNamespaceLoaded2}: tests if a given namespace is loaded, without loading it,
+\item \code{isNamespaceLoaded2()}: tests if a given namespace is loaded, without loading it,
 contrary to \code{\link{isNamespace}}.
 It is similar to \code{\link{isNamespaceLoaded}} -- which it uses -- but also accepts
 environments.
 
-\item \code{isDevNamespace}: tests the -- current -- namespace is a devtools namespace.
+\item \code{isDevNamespace()}: tests the -- current -- namespace is a devtools namespace.
 
-\item \code{addNamespaceExport}: Dynamically adds exported objects into the loading namespace.
+\item \code{addNamespaceExport()}: Dynamically adds exported objects into the loading namespace.
 
-\item \code{ns_get}: gets an object from a given namespace.
+\item \code{ns_get()}: gets an object from a given namespace.
+
 }}
-

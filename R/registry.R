@@ -224,6 +224,7 @@ testreg <- function(){
 #' @param update logical that indicates if the package registry should be updated, by adding/removing 
 #' entries from other loaded/unloaded packages. 
 #' @param package package where to store or look for the registry.
+#' 
 #' @return a \code{\link[registry:regobj]{registry}} object or \code{NULL} (see argument 
 #' \code{quiet}).
 #' 
@@ -438,7 +439,6 @@ xtable.package_metaregistry <- function(x, ...){
 #' @param overwrite a logical that indicate if an existing registry with the same 
 #' should be overwritten if it exists.
 #' 
-#' @inheritParams packageRegistry
 #' @export
 setPackageRegistry <- function(regname, regobj
 								, description='', entrydesc=NA
@@ -559,6 +559,7 @@ regkeys <- function(regobj, ...){
 #' @param entry a logical that indicates if the 
 #' @param msg a header to use in case of error.
 #' 
+#' @return `regfetch` returns a registry entry.
 #' @export
 regfetch <- function(regobj, ..., all=FALSE, error=TRUE, exact=FALSE
 						, KEYS = NULL
@@ -714,6 +715,8 @@ extract_pkg <- function(x){
 #' @param registry a registry object
 #' @param Class name of the class to generate
 #' @param ... extra arguments passed to \code{\link{setClass}}.
+#' 
+#' @return No return value, called to declare a registry class.
 #' 
 setClassRegistry <- function(registry, Class, ...){
 	

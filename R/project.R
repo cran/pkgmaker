@@ -34,6 +34,7 @@ match_mix <- function(x, table, nomatch = NA_integer_, ignore.case = FALSE){
 #' @param error logical that indicates if an error should be raised
 #' if the directory is not a package directory.
 #' 
+#' @keywords internal
 is_package_path <- function(x, error = FALSE) {
 	if (is.null(x)) return(FALSE)
 	x <- normalizePath(x, mustWork = FALSE)
@@ -66,6 +67,8 @@ is_package_path <- function(x, error = FALSE) {
 #' @param x name of the development package to lookup.
 #' @param error logical that indicates if an error is thrown when the project root directory 
 #' could not be found.
+#' 
+#' @return A character string containing the path to the package.
 #' @export
 find_devpackage <- function(x, error = TRUE) 
 {
@@ -147,6 +150,8 @@ find_devpackage <- function(x, error = TRUE)
 #' @param character.only logical that indicates if argument \var{pkg} should be evaluated or taken litteral. 
 #' @param try.library logicatl that indicates if projects that could not be found should be looked up in 
 #' the installed packages.
+#' 
+#' @return Invisibly the `package` object of the loaded package.
 #' 
 #' @export 
 load_project <- function(pkg, reset = FALSE, ..., utests = TRUE, verbose=FALSE, addlib=TRUE, character.only = FALSE, try.library = FALSE) {

@@ -25,12 +25,17 @@ If \code{Rpkg.prefix = 'Rpackage_'}, then Rmardown citations should be \verb{@Rp
 
 \item{...}{other arguments passed to \link{latex_preamble}}
 }
+\value{
+Path to the preamble file.
+}
 \description{
 Generate RMarkdown Vignette Axiliary Files
 }
 \details{
-To use this feature add the following in your YAML header:\preformatted{header-includes:
+To use this feature add the following in your YAML header:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{header-includes:
   - \\input\{"`r pkgmaker::make_vignette_auxfiles('pkgmaker')`"\}
 bibliography: library.bib
-}
+}\if{html}{\out{</div>}}
 }

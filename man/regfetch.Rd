@@ -60,18 +60,21 @@ If not missing, then arguments in \code{...} are discarded.}
 \item{quiet}{a logical that indicates if the operation should be performed quietly,
 without throwing errors or warnings.}
 }
+\value{
+\code{regfetch} returns a registry entry.
+}
 \description{
 This function provides extra control on how entries are queried
 from a \code{\link[registry:regobj]{registry}} object.
 }
 \section{Functions}{
 \itemize{
-\item \code{pkgreg_fetch}: fetches entries in a package registry, as set up by
+\item \code{pkgreg_fetch()}: fetches entries in a package registry, as set up by
 \code{\link{setPackageRegistry}}.
 
 It loads the requested package registry and uses \code{regfetch}
 to retrieve data from it.
 
-\item \code{pkgreg_remove}: removes an entry from a package registry.
-}}
+\item \code{pkgreg_remove()}: removes an entry from a package registry.
 
+}}

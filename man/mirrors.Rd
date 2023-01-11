@@ -27,6 +27,9 @@ setCRANMirror(url = CRAN, unique = TRUE)
 \item{unique}{logical that indicate if duplicated urls or names should be
 removed.}
 }
+\value{
+\code{setBiocMirror} returns the old set of Bioc repositories.
+}
 \description{
 \code{setBiocMirror} sets all Bioconductor repositories (software, data,
 annotation, etc.).
@@ -36,12 +39,12 @@ the repositories.
 }
 \section{Functions}{
 \itemize{
-\item \code{getBiocMirror}: is a shortcut for \code{getOption('BioC_mirror')}, which
+\item \code{getBiocMirror()}: is a shortcut for \code{getOption('BioC_mirror')}, which
 returns the current Bioconductor mirror as used by \code{biocLite}.
 
-\item \code{getBiocRepos}: returns urls to all Bioconductor repositories on a
+\item \code{getBiocRepos()}: returns urls to all Bioconductor repositories on a
 given mirror.
 
-\item \code{setCRANMirror}: sets the preferred CRAN mirror.
-}}
+\item \code{setCRANMirror()}: sets the preferred CRAN mirror.
 
+}}

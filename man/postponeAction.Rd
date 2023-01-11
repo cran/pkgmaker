@@ -10,10 +10,13 @@ postponeAction(
   key = digest(tempfile()),
   group = NULL,
   envir = topns(strict = FALSE),
-  verbose = getOption("verbose")
+  verbose = getOption("actions.verbose", getOption("verbose"))
 )
 
-runPostponedAction(group = NULL, verbose = getOption("verbose"))
+runPostponedAction(
+  group = NULL,
+  verbose = getOption("actions.verbose", getOption("verbose"))
+)
 }
 \arguments{
 \item{expr}{expression that define the action to postpone.
@@ -30,6 +33,9 @@ Currently not used.}
 
 \item{verbose}{logical that toggles verbose messages.}
 }
+\value{
+\code{postponeAction} returns the names of the postponed actions.
+}
 \description{
 This function implement a mechanism to postpone actions, which can be executed
 at a later stage.
@@ -37,7 +43,7 @@ This is useful when developing packages, where actions that need to be run in th
 \code{link{.onLoad}} function but can be defined close to their context.
 }
 \examples{
-opt <- options(verbose=2)
+opt <- options(actions.verbose=2)
 
 # define actions
 postponeAction(function(){print(10)}, "print")
