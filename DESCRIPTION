@@ -1,8 +1,8 @@
 Package: pkgmaker
 Type: Package
 Title: Development Utilities for R Packages
-Version: 0.32.8
-Date: 2023-02-14
+Version: 0.32.10
+Date: 2023-05-03
 Authors@R: person("Renaud", "Gaujoux", email = "renozao@protonmail.com", role = c("aut", "cre"))
 Description: Provides some low-level utilities to use for package
     development. It currently provides managers for multiple package specific
@@ -30,8 +30,8 @@ Collate: 'bibtex.R' 'colors.R' 'data.R' 'namespace.R' 'utils.R'
         'vignette.R' 'with.r'
 RoxygenNote: 7.2.3
 NeedsCompilation: no
-Packaged: 2023-02-14 17:13:26 UTC; renaud
+Packaged: 2023-05-03 08:01:53 UTC; renaud
 Author: Renaud Gaujoux [aut, cre]
 Maintainer: Renaud Gaujoux <renozao@protonmail.com>
 Repository: CRAN
-Date/Publication: 2023-02-14 17:50:02 UTC
+Date/Publication: 2023-05-03 11:30:08 UTC

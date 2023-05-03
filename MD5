@@ -1,13 +1,13 @@
-f78537f86893a0e8cc899ea68ba16b5f *DESCRIPTION
+6f5742d0a2bd0cdb70e62a55f324a942 *DESCRIPTION
 5214fbe453068b04706038780746a2dc *NAMESPACE
 24055ae23338d12fcc30648fcff59b82 *R/bibtex.R
 353bebca89c904629c7705a7d36e5952 *R/colors.R
 9cddd0a1958c920259cf4c98ef240356 *R/data.R
-a4c85e4a2caf3488e89b755001cc6d96 *R/devutils.R
+c61429795cac7a081bc9ac0a166de98b *R/devutils.R
 74924b07ed5430021cdb7d786fe3e81c *R/files.R
-afabd6bbcf146b0b30c57616e14f7963 *R/graphics.R
+b4ca74eae7d6f465b077b38430ed7525 *R/graphics.R
 5121d06607826aa09d69a862b69f2af1 *R/is.R
-2cbd045d4e97e8f67131e654539bc2e0 *R/knitr.R
+d7b3a1255a0e4a9bf1ab01412bb66176 *R/knitr.R
 730ed5903f90a216f46b9b4d9b446349 *R/logging.R
 1ff849252878027032bee55940a972d9 *R/namespace.R
 14b22e6edfebced695a1fcc344dfa35a *R/options.R
@@ -64,7 +64,7 @@ dd881fdc92dc56fd130d2c96933cf36a *man/isCRANcheck.Rd
 01bc660a90be348862e0e8ef12af6f9c *man/is_package_path.Rd
 2960c35d36b3bc4520fe0b1bdfb86de2 *man/is_something.Rd
 d2531b8c6523e29bb7418dcbaac9001e *man/iterCount.Rd
-feac25b92d8d1aa7f204c49d52f2b5ce *man/knit_ex.Rd
+77402b804f08cc98ba4eef6ad48df5a8 *man/knit_ex.Rd
 aead0a739e5c77357f6efd3b92525e0d *man/latex.Rd
 627d53b8e560906aa8a6f5825a0950ae *man/libutils.Rd
 f22334ed9135382a04ae3ef8c2c6ccdd *man/list.data.Rd
